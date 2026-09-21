@@ -43,3 +43,32 @@
 - 파일 검증: Cell 위치 (0,0,0), 회전 identity. 세 물체의 중심과 회전이 기준 배치로 복구됨.
 - 다음 실습: Script Editor에서 현재 Stage와 Prim을 Python으로 읽고 위치 속성 조작.
 - 다음 실습 실행 상태: 아직 실행 전.
+## 2026-09-21 — 학습 종료 및 다음 작업 인계
+
+### 오늘 확인한 내용
+- 정적 셀 좌표 실습 이후 Script Editor의 Prim 조회, 속성 읽기/쓰기, 배치 간격 변경을 학습.
+- Franka 공식 pick/place 실행에서 Done picking and placing 확인. 프로젝트 복사본은 완료 후 일시정지·창 유지로 수정됨.
+- Hello Robot(Jetbot): 로봇 로딩, 바퀴 속도 제어, 좌우 속도 차이, 관절 이름으로 인덱스 선택을 실습. 사용자가 정상 동작 확인.
+- 실제 앱 로그에서 Joint names=['left_wheel_joint', 'right_wheel_joint'], Wheel indices=[0 1], Number of DOFs=2 확인.
+- Console의 Info 필터가 꺼져 print 출력이 숨겨졌던 문제 해결; 사용자 확인 완료.
+- Python 학습: self와 인스턴스 속성, 메서드/콜백, print/f-string, list와 NumPy 배열, .numpy() 변환.
+
+### 다음 세션 시작점
+1. 프로젝트의 projects/franka-cell/pick_place.py를 읽어 현재 변경 상태 확인.
+2. main()의 pick=(0.45, 0.0, 0.025), place=(0.45, 0.35, 0.025)를 찾아 의미 설명.
+3. 기준 동작을 확인한 뒤 목표 위치 한 항목만 작게 바꾸고 실행 결과 비교. 도달·파지 성공은 직접 확인하며 단정하지 않음.
+4. 이후 공급대·치구·배출대를 로봇 도달 범위에 맞춰 추가하고 투입→처리→배출 프로젝트로 확장.
+- 기존 기초 조작을 처음부터 반복하지 말 것. 실제 포트폴리오 제작과 연결해 한 단계씩 지도.
+- 각 단계마다 공식 문서의 위치와 사용자 프로젝트 파일을 명확히 구분해 안내.
+- 사용자는 C#과 비교한 Python 문법 설명을 선호하며 Python은 초보 수준.
+
+### 실행 및 주의사항
+- 작업 폴더: C:\IssacsimProject\Issacsim
+- 저장소: https://github.com/BillionChild/Issacsim
+- 실행: C:\isaacsim\python.bat C:\IssacsimProject\Issacsim\projects\franka-cell\pick_place.py --robot franka
+- 위 Franka 스크립트는 독립 실행용이며 Script Editor에 그대로 붙여넣지 않음.
+- Hello Robot은 설치 폴더의 hello_world.py에서 학습함. hello_world_extension.py는 예제 등록용; 잘못 들어간 실습 코드를 백업하고 공식 v6.1.0 등록 파일로 복원했음.
+- 수정 후 저장과 확장 재로드가 필요. LOAD만으로 코드 재로드를 보장하지 않음.
+- set_dof_velocity_targets 중복 호출을 제거하도록 안내함; 실제 파일 수정 여부는 다음에 확인.
+- 로컬 미커밋 장면: exercises/01-static-cell/static-cell.usd, exercises/02-robot-move.usd, exercises/jetbot_edit.usd. 이 세 장면은 이번 기록 커밋에 포함하지 않았으며 검증 후 관리할 것.
+- 오늘은 사용자 요청으로 종료. 다음 작업을 자동 실행하거나 예약하지 않음.
