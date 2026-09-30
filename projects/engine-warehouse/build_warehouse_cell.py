@@ -12,6 +12,10 @@ for name in ['Light','PreviewCamera']:s.OverridePrim('/World/Line/'+name).SetAct
 load=UsdGeom.Xformable(s.GetPrimAtPath('/World/Line/InspectionLoad'))
 next(op for op in load.GetOrderedXformOps() if op.GetOpType()==UsdGeom.XformOp.TypeTranslate).Set(Gf.Vec3d(1.8,0,.7))
 ref('/World/FANUC_210L',ROOT/'external_assets/robots/fanuc_r2000ic_210l/robot.usdc',(2.1,1.9,0)).AddRotateZOp().Set(-90)
+# Empty-hand idle pose: turn away from conveyor and retract the shoulder.
+UsdGeom.Xformable(s.GetPrimAtPath('/World/FANUC_210L/Base/J1')).AddRotateZOp().Set(180)
+UsdGeom.Xformable(s.GetPrimAtPath('/World/FANUC_210L/Base/J1/J2')).AddRotateYOp().Set(-20)
+UsdGeom.Xformable(s.GetPrimAtPath('/World/FANUC_210L/Base/J1/J2/J3')).AddRotateYOp().Set(35)
 ref('/World/FANUC_210L/Base/J1/J2/J3/J4/J5/J6/EngineJig',HERE/'assets/engine_jig.usda',(.24,0,0))
 def mat(name,color,metal=0):
  m=UsdShade.Material.Define(s,'/World/Looks/'+name);sh=UsdShade.Shader.Define(s,str(m.GetPath())+'/Surface');sh.CreateIdAttr('UsdPreviewSurface');sh.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color));sh.CreateInput('metallic',Sdf.ValueTypeNames.Float).Set(metal);sh.CreateInput('roughness',Sdf.ValueTypeNames.Float).Set(.4);m.CreateSurfaceOutput().ConnectToSource(sh.CreateOutput('surface',Sdf.ValueTypeNames.Token));return m

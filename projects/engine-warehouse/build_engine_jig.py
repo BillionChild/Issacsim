@@ -22,20 +22,18 @@ metal=material(s,'/EngineJig','Metal',(.28,.34,.42),.7);rubber=material(s,'/Engi
 # Local origin is the wrist flange; +X approaches engine, +Z stays upright.
 cylinder(s,'/EngineJig/WristAdapter',(.025,0,0),.115,.05,'X',metal)
 box(s,'/EngineJig/Backbone',(.08,0,-.21),(.06,.12,.46),metal)
-box(s,'/EngineJig/TopCrossbar',(.1,0,0),(.08,.80,.08),metal)
+box(s,'/EngineJig/TopCrossbar',(.1,0,0),(.08,.90,.08),metal)
 for name,sign in [('Left',1),('Right',-1)]:
  root='/EngineJig/'+name
- box(s,root+'/TopArm',(.39,sign*.36,0),(.66,.08,.08),metal)
- box(s,root+'/SideArm',(.43,sign*.36,-.25),(.12,.08,.5),metal)
- # Closed visual pose only, no actuator or physical constraints.
- box(s,root+'/ClampShoe',(.43,sign*.285,-.27),(.36,.10,.12),metal)
- box(s,root+'/ClampPad',(.43,sign*.2275,-.27),(.32,.015,.10),rubber)
- box(s,root+'/LowerFinger',(.43,sign*.2775,-.535),(.30,.245,.04),metal)
- box(s,root+'/SupportPad',(.43,sign*.20,-.5075),(.24,.09,.015),rubber)
+ UsdGeom.Xform.Define(s,root).AddTranslateOp().Set(Gf.Vec3d(0,sign*.12,0))
+ box(s,root+'/TopArm',(.39,sign*.255,0),(.66,.08,.08),metal)
+ box(s,root+'/SideArm',(.43,sign*.255,-.27),(.12,.08,.54),metal)
+ box(s,root+'/LowerFinger',(.43,sign*.215,-.535),(.30,.12,.04),metal)
+ box(s,root+'/SupportPad',(.43,sign*.195,-.5075),(.24,.08,.015),rubber)
 box(s,'/EngineJig/LocatorPlate',(.105,0,-.28),(.035,.34,.18),metal)
 for name,y in [('A',-.12),('B',.12)]:
  cylinder(s,'/EngineJig/LocatorPin'+name,(.145,y,-.28),.008,.045,'X',pin)
-s.GetDefaultPrim().SetCustomDataByKey('scope','Custom concept, not a FANUC catalogue gripper. Placeholder locator positions, static closed pose; no verified engine hole fit.')
+s.GetDefaultPrim().SetCustomDataByKey('scope','Custom concept, not a FANUC catalogue gripper. Placeholder locator positions, default open pose, 120mm travel per jaw; no verified engine hole fit.')
 s.GetRootLayer().Save()
 
 c=new_stage('engine_cell_cradle.usda','/Cradle')

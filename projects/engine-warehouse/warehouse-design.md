@@ -54,3 +54,22 @@ fb40c9803a826ba68c7c8e28ba904a25efa7fcd2
 - 기존 외부 파렛트 이적 관련 과거 문서보다 이 직접 입고 결정이 우선한다.
 
 검증: USD 참조와 재질, 손목 계층 부착, 4셀 패드, 이적대 제거 및 Isaac Sim 화면 확인.
+
+## 대기 자세 및 평행 집게 수정
+
+- J1=180°, J2=-20°, J3=-35°(URDF J3 축 -Y이므로 USD rotateY=+35°)의 빈손 대기 자세.
+- 대기 시 컨베이어 반대 방향을 향한다. 빈손 자세는 기울어져도 되며 엔진 운반 중 수평 유지 제어는 아직 미구현.
+- 기존 중간 ClampShoe/ClampPad 제거. 좌우 집게 암과 하부 보조 패드만 유지.
+- 좌우 그룹이 로컬 Y축으로 각각 0~120mm 직선 이동. 하부 받침도 함께 움직임.
+- 기본값 열림. 집게 내측 간격 닫힘430mm/열림670mm. 실제 엔진 형상에 맞춘 접촉/파지력 검증값은 아님.
+- 집게 구동은 USD Xform 위치 제어이며 물리 프리즘 조인트나 액추에이터 제어가 아니다.
+- 새 실행: `C:/isaacsim/python.bat projects/engine-warehouse/run_gripper_preview.py`
+- Engine Gripper 창의 Open jaws / Close jaws 버튼 사용.
+- `--test` 모드는 닫힘·열림 종단 도달을 Isaac Sim에서 확인 후 종료.
+- 초기 로봇/지그의 메시·기본도형별 월드 AABB와 컨베이어/엔진/랙 경계상자 교차 0개 확인.
+  이는 정적 외부 장애물 검증이며 자기충돌 및 대기→픽업 경로 검증을 대체하지 않는다.
+- 전체 장면 로딩이 지연되어 열림/닫힘 실행 검증은 동일 지그를 참조하는 경량 상세 장면에서 수행한다.
+- 상세 조작 창 실행: `C:/isaacsim/python.bat projects/engine-warehouse/run_gripper_preview.py --detail`
+- 전체 셀 기본 실행은 새 대기 자세와 열린 집게로 시작한다.
+- 최종 실행 검증: 전체 셀 GUI에서 Close jaws 입력 후 430mm 도달, Open jaws 복귀 확인.
+- headless 자동 테스트는 시작 지연으로 완료하지 못해 종료했으며, 통과로 기록하지 않는다.

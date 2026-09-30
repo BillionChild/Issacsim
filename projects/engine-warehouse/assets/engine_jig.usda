@@ -7,7 +7,7 @@
 
 def Xform "EngineJig" (
     customData = {
-        string scope = "Custom concept, not a FANUC catalogue gripper. Placeholder locator positions, static closed pose; no verified engine hole fit."
+        string scope = "Custom concept, not a FANUC catalogue gripper. Placeholder locator positions, default open pose, 120mm travel per jaw; no verified engine hole fit."
     }
 )
 {
@@ -85,13 +85,16 @@ def Xform "EngineJig" (
     {
         rel material:binding = </EngineJig/Looks/Metal>
         double size = 1
-        float3 xformOp:scale = (0.08, 0.8, 0.08)
+        float3 xformOp:scale = (0.08, 0.9, 0.08)
         double3 xformOp:translate = (0.1, 0, 0)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
     }
 
-    def "Left"
+    def Xform "Left"
     {
+        double3 xformOp:translate = (0, 0.12, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
         def Cube "TopArm" (
             prepend apiSchemas = ["MaterialBindingAPI"]
         )
@@ -99,7 +102,7 @@ def Xform "EngineJig" (
             rel material:binding = </EngineJig/Looks/Metal>
             double size = 1
             float3 xformOp:scale = (0.66, 0.08, 0.08)
-            double3 xformOp:translate = (0.39, 0.36, 0)
+            double3 xformOp:translate = (0.39, 0.255, 0)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
 
@@ -109,30 +112,8 @@ def Xform "EngineJig" (
         {
             rel material:binding = </EngineJig/Looks/Metal>
             double size = 1
-            float3 xformOp:scale = (0.12, 0.08, 0.5)
-            double3 xformOp:translate = (0.43, 0.36, -0.25)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
-        }
-
-        def Cube "ClampShoe" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {
-            rel material:binding = </EngineJig/Looks/Metal>
-            double size = 1
-            float3 xformOp:scale = (0.36, 0.1, 0.12)
-            double3 xformOp:translate = (0.43, 0.285, -0.27)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
-        }
-
-        def Cube "ClampPad" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {
-            rel material:binding = </EngineJig/Looks/Rubber>
-            double size = 1
-            float3 xformOp:scale = (0.32, 0.015, 0.1)
-            double3 xformOp:translate = (0.43, 0.2275, -0.27)
+            float3 xformOp:scale = (0.12, 0.08, 0.54)
+            double3 xformOp:translate = (0.43, 0.255, -0.27)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
 
@@ -142,8 +123,8 @@ def Xform "EngineJig" (
         {
             rel material:binding = </EngineJig/Looks/Metal>
             double size = 1
-            float3 xformOp:scale = (0.3, 0.245, 0.04)
-            double3 xformOp:translate = (0.43, 0.2775, -0.535)
+            float3 xformOp:scale = (0.3, 0.12, 0.04)
+            double3 xformOp:translate = (0.43, 0.215, -0.535)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
 
@@ -153,14 +134,17 @@ def Xform "EngineJig" (
         {
             rel material:binding = </EngineJig/Looks/Rubber>
             double size = 1
-            float3 xformOp:scale = (0.24, 0.09, 0.015)
-            double3 xformOp:translate = (0.43, 0.2, -0.5075)
+            float3 xformOp:scale = (0.24, 0.08, 0.015)
+            double3 xformOp:translate = (0.43, 0.195, -0.5075)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
     }
 
-    def "Right"
+    def Xform "Right"
     {
+        double3 xformOp:translate = (0, -0.12, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
         def Cube "TopArm" (
             prepend apiSchemas = ["MaterialBindingAPI"]
         )
@@ -168,7 +152,7 @@ def Xform "EngineJig" (
             rel material:binding = </EngineJig/Looks/Metal>
             double size = 1
             float3 xformOp:scale = (0.66, 0.08, 0.08)
-            double3 xformOp:translate = (0.39, -0.36, 0)
+            double3 xformOp:translate = (0.39, -0.255, 0)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
 
@@ -178,30 +162,8 @@ def Xform "EngineJig" (
         {
             rel material:binding = </EngineJig/Looks/Metal>
             double size = 1
-            float3 xformOp:scale = (0.12, 0.08, 0.5)
-            double3 xformOp:translate = (0.43, -0.36, -0.25)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
-        }
-
-        def Cube "ClampShoe" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {
-            rel material:binding = </EngineJig/Looks/Metal>
-            double size = 1
-            float3 xformOp:scale = (0.36, 0.1, 0.12)
-            double3 xformOp:translate = (0.43, -0.285, -0.27)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
-        }
-
-        def Cube "ClampPad" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {
-            rel material:binding = </EngineJig/Looks/Rubber>
-            double size = 1
-            float3 xformOp:scale = (0.32, 0.015, 0.1)
-            double3 xformOp:translate = (0.43, -0.2275, -0.27)
+            float3 xformOp:scale = (0.12, 0.08, 0.54)
+            double3 xformOp:translate = (0.43, -0.255, -0.27)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
 
@@ -211,8 +173,8 @@ def Xform "EngineJig" (
         {
             rel material:binding = </EngineJig/Looks/Metal>
             double size = 1
-            float3 xformOp:scale = (0.3, 0.245, 0.04)
-            double3 xformOp:translate = (0.43, -0.2775, -0.535)
+            float3 xformOp:scale = (0.3, 0.12, 0.04)
+            double3 xformOp:translate = (0.43, -0.215, -0.535)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
 
@@ -222,8 +184,8 @@ def Xform "EngineJig" (
         {
             rel material:binding = </EngineJig/Looks/Rubber>
             double size = 1
-            float3 xformOp:scale = (0.24, 0.09, 0.015)
-            double3 xformOp:translate = (0.43, -0.2, -0.5075)
+            float3 xformOp:scale = (0.24, 0.08, 0.015)
+            double3 xformOp:translate = (0.43, -0.195, -0.5075)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
     }
