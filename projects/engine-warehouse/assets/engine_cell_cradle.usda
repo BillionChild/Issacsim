@@ -1,0 +1,95 @@
+#usda 1.0
+(
+    defaultPrim = "Cradle"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Cradle" (
+    customData = {
+        string scope = "Generic rubber-pad visual cradle, not a verified sump contact contour. Finger lanes remain clear in nominal aligned layout."
+    }
+)
+{
+    def "Looks"
+    {
+        def Material "Steel"
+        {
+            token outputs:surface.connect = </Cradle/Looks/Steel/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.2, 0.27, 0.34)
+                float inputs:metallic = 0.6
+                float inputs:roughness = 0.35
+                token outputs:surface
+            }
+        }
+
+        def Material "Rubber"
+        {
+            token outputs:surface.connect = </Cradle/Looks/Rubber/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.03, 0.035)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.65
+                token outputs:surface
+            }
+        }
+    }
+
+    def "Left"
+    {
+        def Cube "Pedestal" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </Cradle/Looks/Steel>
+            double size = 1
+            float3 xformOp:scale = (0.5, 0.08, 0.11)
+            double3 xformOp:translate = (0, 0.085, 0.055)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "RubberPad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </Cradle/Looks/Rubber>
+            double size = 1
+            float3 xformOp:scale = (0.46, 0.09, 0.02)
+            double3 xformOp:translate = (0, 0.085, 0.12)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def "Right"
+    {
+        def Cube "Pedestal" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </Cradle/Looks/Steel>
+            double size = 1
+            float3 xformOp:scale = (0.5, 0.08, 0.11)
+            double3 xformOp:translate = (0, -0.085, 0.055)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "RubberPad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </Cradle/Looks/Rubber>
+            double size = 1
+            float3 xformOp:scale = (0.46, 0.09, 0.02)
+            double3 xformOp:translate = (0, -0.085, 0.12)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+}
+

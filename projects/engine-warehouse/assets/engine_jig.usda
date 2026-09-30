@@ -1,0 +1,266 @@
+#usda 1.0
+(
+    defaultPrim = "EngineJig"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "EngineJig" (
+    customData = {
+        string scope = "Custom concept, not a FANUC catalogue gripper. Placeholder locator positions, static closed pose; no verified engine hole fit."
+    }
+)
+{
+    def "Looks"
+    {
+        def Material "Metal"
+        {
+            token outputs:surface.connect = </EngineJig/Looks/Metal/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.28, 0.34, 0.42)
+                float inputs:metallic = 0.7
+                float inputs:roughness = 0.35
+                token outputs:surface
+            }
+        }
+
+        def Material "Rubber"
+        {
+            token outputs:surface.connect = </EngineJig/Looks/Rubber/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.03, 0.035)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.65
+                token outputs:surface
+            }
+        }
+
+        def Material "Locator"
+        {
+            token outputs:surface.connect = </EngineJig/Looks/Locator/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.9, 0.58, 0.08)
+                float inputs:metallic = 0.65
+                float inputs:roughness = 0.35
+                token outputs:surface
+            }
+        }
+    }
+
+    def Cylinder "WristAdapter" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        uniform token axis = "X"
+        double height = 0.05
+        rel material:binding = </EngineJig/Looks/Metal>
+        double radius = 0.115
+        double3 xformOp:translate = (0.025, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Cube "Backbone" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </EngineJig/Looks/Metal>
+        double size = 1
+        float3 xformOp:scale = (0.06, 0.12, 0.46)
+        double3 xformOp:translate = (0.08, 0, -0.21)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def Cube "TopCrossbar" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </EngineJig/Looks/Metal>
+        double size = 1
+        float3 xformOp:scale = (0.08, 0.8, 0.08)
+        double3 xformOp:translate = (0.1, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def "Left"
+    {
+        def Cube "TopArm" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.66, 0.08, 0.08)
+            double3 xformOp:translate = (0.39, 0.36, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SideArm" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.12, 0.08, 0.5)
+            double3 xformOp:translate = (0.43, 0.36, -0.25)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "ClampShoe" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.36, 0.1, 0.12)
+            double3 xformOp:translate = (0.43, 0.285, -0.27)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "ClampPad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Rubber>
+            double size = 1
+            float3 xformOp:scale = (0.32, 0.015, 0.1)
+            double3 xformOp:translate = (0.43, 0.2275, -0.27)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "LowerFinger" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.3, 0.245, 0.04)
+            double3 xformOp:translate = (0.43, 0.2775, -0.535)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SupportPad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Rubber>
+            double size = 1
+            float3 xformOp:scale = (0.24, 0.09, 0.015)
+            double3 xformOp:translate = (0.43, 0.2, -0.5075)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def "Right"
+    {
+        def Cube "TopArm" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.66, 0.08, 0.08)
+            double3 xformOp:translate = (0.39, -0.36, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SideArm" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.12, 0.08, 0.5)
+            double3 xformOp:translate = (0.43, -0.36, -0.25)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "ClampShoe" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.36, 0.1, 0.12)
+            double3 xformOp:translate = (0.43, -0.285, -0.27)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "ClampPad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Rubber>
+            double size = 1
+            float3 xformOp:scale = (0.32, 0.015, 0.1)
+            double3 xformOp:translate = (0.43, -0.2275, -0.27)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "LowerFinger" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Metal>
+            double size = 1
+            float3 xformOp:scale = (0.3, 0.245, 0.04)
+            double3 xformOp:translate = (0.43, -0.2775, -0.535)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SupportPad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </EngineJig/Looks/Rubber>
+            double size = 1
+            float3 xformOp:scale = (0.24, 0.09, 0.015)
+            double3 xformOp:translate = (0.43, -0.2, -0.5075)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def Cube "LocatorPlate" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </EngineJig/Looks/Metal>
+        double size = 1
+        float3 xformOp:scale = (0.035, 0.34, 0.18)
+        double3 xformOp:translate = (0.105, 0, -0.28)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def Cylinder "LocatorPinA" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        uniform token axis = "X"
+        double height = 0.045
+        rel material:binding = </EngineJig/Looks/Locator>
+        double radius = 0.008
+        double3 xformOp:translate = (0.145, -0.12, -0.28)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Cylinder "LocatorPinB" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        uniform token axis = "X"
+        double height = 0.045
+        rel material:binding = </EngineJig/Looks/Locator>
+        double radius = 0.008
+        double3 xformOp:translate = (0.145, 0.12, -0.28)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
+
