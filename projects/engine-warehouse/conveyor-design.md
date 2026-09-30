@@ -13,3 +13,31 @@
 
 생성: `C:/isaacsim/kit/python/python.exe projects/engine-warehouse/build_inlet_conveyor.py`
 미리보기: `preview_engine.py --stage`에 로컬 `external_assets/engines/caterham_duratec/usd/inlet_conveyor_preview.usda` 지정.
+
+## 단일 파렛트 동작 시연
+
+실행:
+```powershell
+& C:/isaacsim/python.bat C:/IssacsimProject/Issacsim/projects/engine-warehouse/run_conveyor_demo.py
+```
+
+`Conveyor Demo - SIMULATED VISION` 창에서:
+1. Start infeed: X=-750 mm에서 검사 위치 X=0으로 입고.
+2. 2초 모의 검사 후 NG. 파렛트를 15 mm 들어 Y=1100 mm 버퍼로 이동 후 내려놓음.
+3. 작업자 보완을 기다림. `Rework complete -> return` 버튼이 이때 활성화됨.
+4. 버튼을 누르면 검사 위치로 복귀하고 2초 모의 재검사 후 OK.
+5. X=750 mm 픽업 위치로 이동 후 정지. 이때 Pickup allowed=True.
+6. Pause / Resume은 동작 정지/재개, Reset은 입구로 초기화.
+
+실제 비전/AI 검사, 물리 접촉이나 모터 이송이 아닌 USD 위치 제어 데모다.
+첫 검사 NG, 재검사 OK는 고정 시나리오이며 GUI에 명시한다.
+한 대만 이송하므로 복귀 시 다른 파렛트와의 합류 제어는 아직 없다.
+픽업 허용은 상태값만 표시하고 로봇 픽업은 수행하지 않는다.
+횡이송 스트립의 승강은 단순 시각 표현이며 실제 기구 동작 검증이 아니다.
+엔진/받침/파렛트는 상위 Xform으로 함께 움직이며 원본 USD는 세션 레이어로 보호한다.
+Isaac Sim 타임라인 Play 대신 데모 창 버튼을 사용한다.
+
+검증:
+- `python -m unittest discover -s projects/engine-warehouse -p test_conveyor_cycle.py`
+- `C:/isaacsim/python.bat projects/engine-warehouse/run_conveyor_demo.py --test`
+  테스트 모드에서만 보완 완료 신호를 자동 입력하고 종료한다.
