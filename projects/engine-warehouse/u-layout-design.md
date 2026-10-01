@@ -35,5 +35,26 @@
 - `verify_u_layout.py`: static placement, pallet type and robot external AABB checks.
 - Default `PreviewCamera` is top-down; `PerspectiveCamera` is the oblique view.
 - Corner decks are schematic 90-degree transfer locations; driven roller/chain/lift details are not modeled yet.
-- This is a STATIC review scene: no camera inference, conveyor interlocks, moving pallets or robot paths implemented for this layout.
+- Saved USD remains a STATIC review scene. The session-only loop demo below adds one-pallet transport; no camera inference, physical conveyor drive or new robot paths.
 - Do not play the older `warehouse_cycle_preview.usdc` as if it uses this layout. That historical demo uses different coordinates.
+
+## Single-pallet loop demonstration
+
+`u_loop_cycle.py` implements the approved route at 0.4m/s, with a 2-second simulated inspection. The default result sequence is FAIL then OK. Missing scripted results fail closed; tests also cover a second FAIL followed by another repair/reinspection.
+
+- `Start infeed`: depart from the north end of the inline conveyor.
+- `Pause / Resume`: freeze/resume transport and inspection dwell.
+- `Repair complete -> REINSPECT`: enabled only at the worker stop, while unpaused. Clears the old result to PENDING and releases return travel; never grants OK itself.
+- `Reset to inlet`: resets the position, inspection sequence and pickup permission.
+- `Top view` / `Perspective`: change review camera.
+- Pickup permission is true only at the pickup station after an OK result; FAIL crosses that station with permission false. The robot remains static.
+- Only one pallet exists in this demo. Multi-pallet merging, spacing and traffic arbitration are not implemented.
+- Corner direction changes use kinematic translations without rotating the square pallet; no powered transfer mechanism is claimed.
+
+Run in PowerShell:
+```powershell
+& C:/isaacsim/python.bat C:/IssacsimProject/Issacsim/projects/engine-warehouse/run_u_loop_demo.py
+```
+`--autoplay` starts infeed automatically, then still waits for manual repair completion. `--test` visibly exercises the repair gate with one automated test input, verifies final USD position/robot inactivity, and resets to normal manual controls without closing the window.
+
+Offline checks: `C:/isaacsim/kit/python/python.exe projects/engine-warehouse/test_u_loop_cycle.py`.
