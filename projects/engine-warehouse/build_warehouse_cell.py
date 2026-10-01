@@ -11,7 +11,8 @@ ref('/World/Line',folder/'inlet_conveyor_preview.usda')
 for name in ['Light','PreviewCamera']:s.OverridePrim('/World/Line/'+name).SetActive(False)
 load=UsdGeom.Xformable(s.GetPrimAtPath('/World/Line/InspectionLoad'))
 next(op for op in load.GetOrderedXformOps() if op.GetOpType()==UsdGeom.XformOp.TypeTranslate).Set(Gf.Vec3d(1.8,0,.7))
-ref('/World/FANUC_210L',ROOT/'external_assets/robots/fanuc_r2000ic_210l/robot.usdc',(2.1,1.9,0)).AddRotateZOp().Set(-90)
+# Approved 300 mm move away from the conveyor for the cell approach workspace.
+ref('/World/FANUC_210L',ROOT/'external_assets/robots/fanuc_r2000ic_210l/robot.usdc',(2.1,2.2,0)).AddRotateZOp().Set(-90)
 # Empty-hand idle pose: turn away from conveyor and retract the shoulder.
 UsdGeom.Xformable(s.GetPrimAtPath('/World/FANUC_210L/Base/J1')).AddRotateZOp().Set(180)
 UsdGeom.Xformable(s.GetPrimAtPath('/World/FANUC_210L/Base/J1/J2')).AddRotateYOp().Set(-20)
