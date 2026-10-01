@@ -1,0 +1,15 @@
+[package]
+version = "0.1.0"
+title = "Engine Warehouse"
+description = "In-editor U-cell demo: native Play/Pause/Stop, Reset, code reload and motion rebuild."
+category = "Simulation"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.usd" = {}
+"omni.timeline" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.window.file" = {}
+
+[[python.module]]
+name = "engine_warehouse_editor"

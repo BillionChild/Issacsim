@@ -1,5 +1,7 @@
 # U-shaped warehouse cell — approved topology, provisional geometry
 
+For development inside an existing Isaac Sim window, see **EDITOR.md**. The editor extension supports native Play/Pause/Stop, Reload Code and motion rebuild; the standalone launch commands below remain fallback options.
+
 2026-10-01. +Y is 12 o'clock; +X is 3 o'clock. This replaces the proposed straight-line layout for future work, not its historical demo files.
 
 ## Approved flow
