@@ -58,3 +58,24 @@ Run in PowerShell:
 `--autoplay` starts infeed automatically, then still waits for manual repair completion. `--test` visibly exercises the repair gate with one automated test input, verifies final USD position/robot inactivity, and resets to normal manual controls without closing the window.
 
 Offline checks: `C:/isaacsim/kit/python/python.exe projects/engine-warehouse/test_u_loop_cycle.py`.
+
+## OK-triggered robot storage
+
+`--store` connects the loop to a single-engine transfer into the lower rack cell at world (0.6,3.0). Robot base and U layout are unchanged. The original folded pose is both the wait and finish pose.
+
+- Start requires current inspection OK, READY_PICKUP state and pallet position (0,-2.2,0.7).
+- A one-shot transfer latch prevents repeated pickup from the still-high loop signal. The cell is reserved while moving and marked occupied at release.
+- Close jaws -> attach the engine and its mock receiver blocks -> lift -> pass above the outbound carrier -> align at the rack front -> lower -> insert -> seat -> release -> open -> withdraw -> idle.
+- The inline pallet and its support columns remain at pickup. Outbound transport is not animated by this step.
+- Carried engine stays level; yaw may rotate. Attachment is a kinematic relationship, not simulated gripping forces or verified pin engagement.
+- `Reset to inlet` resets the entire single-engine demonstration, including the occupied-cell state.
+
+Prepare once after changing motion source:
+```powershell
+& C:/isaacsim/kit/python/python.exe C:/IssacsimProject/Issacsim/projects/engine-warehouse/build_u_storage_demo.py
+& C:/isaacsim/kit/python/python.exe C:/IssacsimProject/Issacsim/projects/engine-warehouse/check_u_storage.py
+& C:/isaacsim/python.bat C:/IssacsimProject/Issacsim/projects/engine-warehouse/run_u_loop_demo.py --store
+```
+Motion is cached locally in `outputs/u_storage_motion.npz`; source fingerprints prevent reuse after motion-code changes. Layout or asset changes require rebuilding and rechecking as well. `--store --test` performs the visible integration check, then resets to manual controls and keeps the window open.
+
+Verification for this path: 476 time samples at 0.2s intervals, no detected robot/environment or payload/rack/carrier intersections; robot triangle/cube checks follow bounding-box checks. Midpoint carried-axis error <0.000010 and grip-position interpolation error <0.000011m. USD link transforms agree with FK. These are sampled external checks, not proof of continuous collision freedom, robot self-collision, engine/jig contact, real vision or load dynamics. Nominal robot-only sequence is about 95 seconds; this is a deliberately slow demonstration, not a production cycle-time estimate.
