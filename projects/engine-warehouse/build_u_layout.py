@@ -126,7 +126,10 @@ def build():
     # Reuse the actual approved robot and rack assets, with new layout transforms.
     reference(s, '/World/Robot', ROOT/'external_assets/robots/fanuc_r2000ic_210l/robot.usdc').AddRotateZOp().Set(-90)
     path = '/World/Robot/Base'
-    for index, (axis, value) in enumerate(zip('ZYYXYX',(180,-60,79,0,125,0)),1):
+    from u_storage import IDLE
+    from math import degrees
+    angles=[degrees(float(q))*sign for q,sign in zip(IDLE,(1,1,-1,-1,-1,-1))]
+    for index, (axis, value) in enumerate(zip('ZYYXYX',angles),1):
         path += f'/J{index}'
         getattr(UsdGeom.Xformable(s.GetPrimAtPath(path)), 'AddRotate'+axis+'Op')().Set(value)
     reference(s, path+'/EngineJig', HERE/'assets/engine_jig.usda', (.24,0,0))

@@ -21,6 +21,16 @@ class StorageTests(unittest.TestCase):
         self.assertFalse(r.try_start(c))
         r.reset();self.assertFalse(r.cell_occupied);np.testing.assert_allclose(r.sample().q,IDLE)
 
+    def test_pickup_ready_hover(self):
+        first=self.frames[0];last=self.frames[-1]
+        for frame in (first,last):
+            p,r=fk(frame.q,(0,0,0))
+            np.testing.assert_allclose(p,[.43,-2.2,2.35],atol=2e-4)
+            np.testing.assert_allclose(r[:,2],[0,0,1],atol=2e-4)
+            self.assertEqual(frame.opening,.12)
+        self.assertLess(last.time,95.13619850817527)
+        self.assertFalse(any(f.phase in ('FACE_PICKUP','FOLD_ARM','FOLD_WRIST') for f in self.frames))
+
     def test_carried_pose_and_continuity(self):
         for a,b in zip(self.frames,self.frames[1:]):
             self.assertTrue(np.all(b.q>=LOW-1e-7) and np.all(b.q<=HIGH+1e-7))

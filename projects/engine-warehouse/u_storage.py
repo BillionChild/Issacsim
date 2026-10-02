@@ -4,7 +4,8 @@ from bisect import bisect_right
 import math
 from fanuc_kinematics import np, fk, ik
 
-IDLE=np.radians([180,-60,-79,0,-125,0])
+# Pickup-ready hover: flange (.43, -2.2, 2.35), level tool yaw 180.
+IDLE=np.radians([16.9378758384079,20.620693292315774,35.933043437943965,94.59809662178361,-106.31944379640223,-74.02800640819173])
 PICK=np.array([0.,-2.2,.7])
 CELL=np.array([.6,3.,.66])
 
@@ -31,13 +32,6 @@ def build_transfer():
         else:payload=PICK.copy() if owner=='pallet' else CELL.copy()
         frames.append(Frame(frames[-1].time+dt if frames else 0.,phase,q.copy(),opening,payload.copy(),yaw,owner))
     def smooth(t):return t*t*(3-2*t)
-    def joints(target,phase):
-        nonlocal q
-        start=q.copy();n=max(100,int(np.max(np.abs(np.degrees(target-start)))*3))
-        for t in np.linspace(0,1,n+1)[1:]:
-            new=start+smooth(t)*(target-start)
-            dt=max(4/n,float(np.max(np.abs(np.degrees(new-q))))/20)
-            q=new;emit(phase,dt)
     def move(position,start_yaw,end_yaw,phase):
         nonlocal q
         start,_=fk(q,(0,0,0));target=np.array(position)
@@ -54,10 +48,6 @@ def build_transfer():
             opening=start+smooth(t)*(target-start);emit(phase,2/60)
 
     emit('WAIT_PICKUP_OK',0)
-    approach=ik(np.array([.8,-2.2,1.7]),180,np.radians([25,20,14,87,-115,-97]),(0,0,0))
-    facing=IDLE.copy();facing[0]=approach[0]
-    raised=facing.copy();raised[1:3]=approach[1:3]
-    joints(facing,'FACE_PICKUP');joints(raised,'RAISE_ARM');joints(approach,'APPROACH_PICKUP')
     move([.43,-2.2,1.35],180,180,'LOWER_OPEN_JAWS')
     jaws(0.,'CLOSE_JAWS');owner='gripper';emit('ATTACH_ENGINE_KINEMATIC',.04)
     move([.43,-2.2,2.35],180,180,'LIFT_ENGINE')
@@ -73,8 +63,7 @@ def build_transfer():
     move([1.8,.8,2.35],450,360,'RETURN_NORTH')
     move([1.8,-.8,2.35],360,270,'RETURN_SOUTH')
     move([.43,-2.2,2.35],270,180,'RETURN_PICKUP_SIDE')
-    move([.8,-2.2,1.7],180,180,'RETURN_APPROACH')
-    joints(raised,'FOLD_WRIST');joints(facing,'FOLD_ARM');joints(IDLE,'IDLE_CELL_OCCUPIED')
+    emit('READY_NEXT_ENGINE',.04)
     return frames
 
 
