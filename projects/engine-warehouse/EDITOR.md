@@ -59,3 +59,7 @@ Offline checks: 60/20/5 FPS input intervals produced equal modeled duration (149
 ## Token accounting
 
 Run `tools/token_usage_report.py --session <local Codex rollout JSONL>` with Python. It reads usage metadata and request labels, and writes local `outputs/token-usage-by-turn.csv` and `outputs/token-usage-summary.json`. It does not send conversation contents externally. Native turn totals are used without adding the duplicate token-count events. Cached input is a subset of input; reasoning is a subset of output. Per-code-file, per-tool and coding-versus-testing token allocation is not provided by these records. The active turn's report is a snapshot, not its final usage or a monetary bill.
+
+## Windows HTTP port startup failure
+If startup reports WinError 10013 while binding 0.0.0.0:8011, inspect Windows TCP excluded port ranges before changing the application or clearing caches. On 2026-10-02 the range 7964-8063 included 8011; a direct bind failed while port 18011 succeeded.
+Run projects/engine-warehouse/start_editor.ps1 to start the regular editor with HTTP port 18011 and random port fallback disabled. This leaves the installation and Windows exclusions unchanged. If Windows later reserves this port too, check another free port. External HTTP clients must use the selected port. The original launcher still uses its original settings.
