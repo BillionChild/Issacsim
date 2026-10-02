@@ -51,10 +51,10 @@ Reload covers `fanuc_kinematics.py`, `u_loop_cycle.py`, `u_storage.py`, `u_stora
 - Model steps are at most 1/60 second; render frame deltas are no longer clipped to 0.1 seconds. Rendering may skip intermediate poses at higher playback speed.
 - Export timing / performance CSV writes `outputs/editor-cycle-metrics.csv`; completion also exports automatically. Export before Stop/Reset to preserve a partial run. A new export overwrites the previous file.
 - CSV contains modeled phase seconds, app-update FPS, maximum frame interval and runtime CPU time. Update FPS is a frame-interval proxy, not a GPU profiler. GPU/render time is not measured separately.
-- WAIT_REWORK is operator waiting time and must be separated from machine cycle time; pause time is excluded. Default FAIL -> repair -> OK -> storage -> robot idle takes 149.92 model seconds excluding repair wait. At 4x, nominal playback is about 37.5 wall seconds plus operator wait. Phase boundaries have up to one 1/60-second step quantization.
+- WAIT_REWORK is operator waiting time and must be separated from machine cycle time; pause time is excluded. Default FAIL -> repair -> OK -> storage -> robot idle takes 109.25 model seconds excluding repair wait. At 4x, nominal playback is about 27.3 wall seconds plus operator wait. Phase boundaries have up to one 1/60-second step quantization.
 - Existing trajectory, motion cache and conveyor speeds are unchanged. No physical robot-speed or cycle-time optimization is claimed.
 
-Offline checks: 60/20/5 FPS input intervals produced equal modeled duration (149.9167 s). A 500-update infeed microbenchmark reduced USD writes from 7500 to 1000 and runtime CPU cost from 0.340 to 0.255 ms/update. This excludes Hydra/RTX rendering and does not establish the cause of the user's low viewport FPS.
+Offline checks: 60/20/5 FPS input intervals produced equal modeled duration (109.2500 s). A 500-update infeed microbenchmark reduced USD writes from 7500 to 1000 and runtime CPU cost from 0.340 to 0.255 ms/update. This excludes Hydra/RTX rendering and does not establish the cause of the user's low viewport FPS.
 
 ## Token accounting
 
@@ -63,3 +63,10 @@ Run `tools/token_usage_report.py --session <local Codex rollout JSONL>` with Pyt
 ## Windows HTTP port startup failure
 If startup reports WinError 10013 while binding 0.0.0.0:8011, inspect Windows TCP excluded port ranges before changing the application or clearing caches. On 2026-10-02 the range 7964-8063 included 8011; a direct bind failed while port 18011 succeeded.
 Run projects/engine-warehouse/start_editor.ps1 to start the regular editor with HTTP port 18011 and random port fallback disabled. This leaves the installation and Windows exclusions unchanged. If Windows later reserves this port too, check another free port. External HTTP clients must use the selected port. The original launcher still uses its original settings.
+
+
+## Pickup-ready standby (2026-10-02)
+Robot waits with open jaws at flange (0.43, -2.2, 2.35) m, level tool yaw 180 degrees. Existing OK/READY_PICKUP permission still gates descent. It returns to the same hover after storage instead of folding. Speeds and placement are unchanged.
+Robot motion: 95.136 s -> about 54.5 s (43% reduction). Full FAIL/repair/OK model cycle excluding manual wait: 109.250 s. This is not a globally optimal path or a validated real robot cycle. The single-cell demo still stops after one engine; continuous multi-engine scheduling is separate.
+To apply in the open editor: Stop, Reload Code + Reset, Play. Load Project also refreshes the saved static layout. Delivered motion cache is already rebuilt.
+Verification: 273 motion geometry samples and 1097 standby/load U-loop samples passed; 3 storage and 3 runtime tests passed. Limits: no continuous swept-volume, self-collision or real grip physics validation; visual playback remains unverified.
