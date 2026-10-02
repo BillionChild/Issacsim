@@ -23,7 +23,7 @@ class WarehouseExtension(omni.ext.IExt):
         _instance=self
         self.runtime=None;self.busy=False;self.task=None;self.process=None
         self.context=omni.usd.get_context();self.timeline=omni.timeline.get_timeline_interface()
-        self.window=ui.Window('Engine Warehouse',width=450,height=350)
+        self.window=ui.Window('Engine Warehouse',width=450,height=430)
         with self.window.frame:
             with ui.VStack(spacing=7):
                 self.info=ui.Label('Load Project to begin. Existing editor stays open.',word_wrap=True)
@@ -32,6 +32,11 @@ class WarehouseExtension(omni.ext.IExt):
                     ui.Button('Play',clicked_fn=self.play)
                     ui.Button('Pause',clicked_fn=self.timeline.pause)
                     ui.Button('Stop / Reset',clicked_fn=self.reset)
+                self.speed=1.
+                with ui.HStack():
+                    for speed in (1.,2.,4.):
+                        ui.Button(f'{speed:g}x',clicked_fn=lambda v=speed:self.set_speed(v))
+                ui.Button('Export timing / performance CSV',clicked_fn=self.export_metrics)
                 self.repair_button=ui.Button('Repair complete -> Reinspect',clicked_fn=self.repair)
                 ui.Button('Reload Code + Reset',clicked_fn=self.reload_code)
                 ui.Button('Rebuild + Check Motion',clicked_fn=self.rebuild)
@@ -84,6 +89,13 @@ class WarehouseExtension(omni.ext.IExt):
             self.info.text='Reload stopped: '+str(e)+' (rebuild motion if source changed)'
             print('WAREHOUSE RELOAD ERROR',repr(e),flush=True)
 
+    def set_speed(self,value):
+        self.speed=value
+        self.info.text=f'Test playback {value:g}x. Model cycle times are unchanged.'
+
+    def export_metrics(self):
+        if self.runtime:self.info.text='Saved: '+str(self.runtime.export_metrics())
+
     def play(self):
         if self.runtime and not self.busy:self.timeline.play()
 
@@ -109,11 +121,15 @@ class WarehouseExtension(omni.ext.IExt):
         if not self.runtime or self.busy:
             self.repair_button.enabled=False;return
         try:
-            if self.timeline.is_playing():self.runtime.tick(min(.1,max(0.,float(event.payload.get('dt',0.)))))
+            if self.timeline.is_playing():
+                dt=max(0.,float(event.payload.get('dt',0.)))
+                self.runtime.tick(dt*self.speed,wall_dt=dt)
             c=self.runtime.cycle;r=self.runtime.storage
-            self.status.text=f'{c.state} | Vision {c.result}\nRobot {r.state}: {r.sample().phase}\nCell occupied: {r.cell_occupied}'
+            status=f'{self.speed:g}x | Model {self.runtime.sim_seconds:.1f}s | {c.state} | Vision {c.result}\nRobot {r.state}: {r.sample().phase}\nCell occupied: {r.cell_occupied}'
+            if self.status.text!=status:self.status.text=status
             self.repair_button.enabled=c.state=='WAIT_REWORK' and self.timeline.is_playing()
-            if r.state=='DONE' and self.timeline.is_playing():self.timeline.pause()
+            if r.state=='DONE' and self.timeline.is_playing():
+                self.timeline.pause();self.export_metrics()
         except Exception as e:
             self.timeline.pause();self.info.text='Paused after error: '+str(e)
 

@@ -43,3 +43,19 @@ Reload covers `fanuc_kinematics.py`, `u_loop_cycle.py`, `u_storage.py`, `u_stora
 ## Verification
 
 `test_editor_runtime.py` checks reset, repeated attach/detach, edit-target preservation and preservation of a separate user session layer. `test_editor_integration.py` runs a separate headless Kit instance to check native timeline controls, three reloads, the complete process, stage-change detachment and reopening—all within one process.
+
+## Playback speed and measurements (2026-10-02)
+
+- Toggle the Engine Warehouse extension off/on once to load the new UI; Isaac Sim can stay open. Load Project, then choose 1x / 2x / 4x and Play.
+- Speed scales the kinematic model clock, not conveyor or robot design speeds. Default is 1x. PhysX time and timeline scrubbing are not the model clock.
+- Model steps are at most 1/60 second; render frame deltas are no longer clipped to 0.1 seconds. Rendering may skip intermediate poses at higher playback speed.
+- Export timing / performance CSV writes `outputs/editor-cycle-metrics.csv`; completion also exports automatically. Export before Stop/Reset to preserve a partial run. A new export overwrites the previous file.
+- CSV contains modeled phase seconds, app-update FPS, maximum frame interval and runtime CPU time. Update FPS is a frame-interval proxy, not a GPU profiler. GPU/render time is not measured separately.
+- WAIT_REWORK is operator waiting time and must be separated from machine cycle time; pause time is excluded. Default FAIL -> repair -> OK -> storage -> robot idle takes 149.92 model seconds excluding repair wait. At 4x, nominal playback is about 37.5 wall seconds plus operator wait. Phase boundaries have up to one 1/60-second step quantization.
+- Existing trajectory, motion cache and conveyor speeds are unchanged. No physical robot-speed or cycle-time optimization is claimed.
+
+Offline checks: 60/20/5 FPS input intervals produced equal modeled duration (149.9167 s). A 500-update infeed microbenchmark reduced USD writes from 7500 to 1000 and runtime CPU cost from 0.340 to 0.255 ms/update. This excludes Hydra/RTX rendering and does not establish the cause of the user's low viewport FPS.
+
+## Token accounting
+
+Run `tools/token_usage_report.py --session <local Codex rollout JSONL>` with Python. It reads usage metadata and request labels, and writes local `outputs/token-usage-by-turn.csv` and `outputs/token-usage-summary.json`. It does not send conversation contents externally. Native turn totals are used without adding the duplicate token-count events. Cached input is a subset of input; reasoning is a subset of output. Per-code-file, per-tool and coding-versus-testing token allocation is not provided by these records. The active turn's report is a snapshot, not its final usage or a monetary bill.

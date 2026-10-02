@@ -9,6 +9,7 @@ FOLDER=ROOT/'external_assets/engines/caterham_duratec/usd'
 class StorageScene:
     def __init__(self,stage):
         self.stage=stage
+        self._last={};self.writes=0
         for name in ('Engine','Fixture/Receivers'):
             stage.OverridePrim('/World/InlineLoad/'+name).SetActive(False)
         payload=UsdGeom.Xform.Define(stage,'/World/CarriedEngine')
@@ -30,11 +31,17 @@ class StorageScene:
 
     def apply(self,frame,pallet_position,pickup_allowed=False,occupied=False,time=Usd.TimeCode.Default()):
         import math
+        # Cache only default values. Baked time samples must always be authored.
+        def write(op,value):
+            key=str(op.GetPath()) if hasattr(op,'GetPath') else str(op.GetAttr().GetPath())
+            if time==Usd.TimeCode.Default() and key in self._last and self._last[key]==value:return
+            op.Set(value,time);self.writes+=1
+            if time==Usd.TimeCode.Default():self._last[key]=value
         for op,value,sign in zip(self.joints,frame.q,(1,1,-1,-1,-1,-1)):
-            op.Set(math.degrees(float(value))*sign,time)
-        for sign,op in zip((1,-1),self.jaws):op.Set(Gf.Vec3d(0,sign*frame.opening,0),time)
-        self.pallet.Set(Gf.Vec3d(*pallet_position),time)
-        self.payload.Set(Gf.Vec3d(*(pallet_position if frame.owner=='pallet' else frame.payload)),time)
-        self.yaw.Set(float(frame.yaw),time)
-        self.phase.Set(frame.phase,time);self.owner.Set(frame.owner,time)
-        self.permission.Set(bool(pickup_allowed),time);self.occupied.Set(bool(occupied),time)
+            write(op,math.degrees(float(value))*sign)
+        for sign,op in zip((1,-1),self.jaws):write(op,Gf.Vec3d(0,sign*frame.opening,0))
+        write(self.pallet,Gf.Vec3d(*pallet_position))
+        write(self.payload,Gf.Vec3d(*(pallet_position if frame.owner=='pallet' else frame.payload)))
+        write(self.yaw,float(frame.yaw))
+        write(self.phase,frame.phase);write(self.owner,frame.owner)
+        write(self.permission,bool(pickup_allowed));write(self.occupied,bool(occupied))
