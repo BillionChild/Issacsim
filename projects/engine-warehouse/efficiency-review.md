@@ -32,3 +32,20 @@ Sources:
 - engine.usdc: metadata plus API scan; no raw vertices/indices or full USD text entered chat. No engine source edits.
 - No Isaac startup log or whole repository contents read. No editor restart or GPU benchmark performed.
 - Likely context contributors: supplied conversation/guidance and web documentation output; geometry arrays contributed none. These are qualitative observations, not per-file billed tokens.
+
+## Material merge candidate (2026-10-02)
+Implemented `merge_engine_meshes.py`, a scoped offline USD merger for the flat static output of our converter. This follows the material-preserving merge approach in NVIDIA's guidance; it does not invoke NVIDIA Scene Optimizer itself. Unexpected animated/transformed/subset geometry or unsupported authored properties abort rather than silently losing data.
+
+- Original 979 meshes -> 12 compatible material groups; all 339,936 triangles retained.
+- Exact per-source verification after reopening: points, face counts/indices/winding, normals, UVs and material bindings. Material values/connections, resolved textures, stage units/up axis and world bounds checked; source SHA256 unchanged.
+- Original 14,112,058 bytes; candidate 18,046,921 bytes. A fresh crate export avoids stale removed geometry blocks; grouping still changes binary packing/deduplication. This is not a file-size reduction.
+- Candidate: external_assets/engines/caterham_duratec/usd/engine_merged.usdc.
+- Open engine_merged_preview.usda in that folder to inspect the merged engine on the existing support fixture. Current warehouse references remain unchanged.
+- outputs/engine-merge-report.json maps every original mesh to its output point/face ranges. This preserves traceability, not individual-part editability. Keep the original for future per-part vision labels or independently moving components.
+- No rendered visual comparison or same-scene FPS comparison performed yet. Do not adopt as the warehouse default until these pass. No polygon decimation, collision modification or grip/support changes.
+
+Guides:
+- https://docs.isaacsim.omniverse.nvidia.com/latest/reference_material/sim_performance_optimization_handbook.html (Robot Asset Optimizations; Scene and Rendering Optimizations)
+- https://docs.omniverse.nvidia.com/extensions/latest/ext_scene-optimizer/operations.html#merge-static-meshes
+
+This task's audit: converter read only relevant mesh-writing section; original binary processed locally via USD/NumPy without printing arrays; bounded summary only. No Isaac restart or startup-log dump.
