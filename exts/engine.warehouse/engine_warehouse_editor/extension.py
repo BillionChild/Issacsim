@@ -12,7 +12,7 @@ from omni.kit.viewport.utility import get_active_viewport
 ROOT=Path(__file__).resolve().parents[3]
 PROJECT=ROOT/'projects/engine-warehouse'
 SCENE=ROOT/'external_assets/engines/caterham_duratec/usd/warehouse_u_layout_preview.usda'
-MODULES=('fanuc_kinematics','u_loop_cycle','u_storage','u_storage_scene','build_u_storage_demo','editor_runtime')
+MODULES=('fanuc_kinematics','u_loop_cycle','u_storage','u_storage_scene','build_u_storage_demo','u_outbound','build_u_outbound_demo','outbound_cycle','editor_runtime')
 _instance=None
 def get_instance():return _instance
 
@@ -37,6 +37,7 @@ class WarehouseExtension(omni.ext.IExt):
                     for speed in (1.,2.,4.):
                         ui.Button(f'{speed:g}x',clicked_fn=lambda v=speed:self.set_speed(v))
                 ui.Button('Export timing / performance CSV',clicked_fn=self.export_metrics)
+                self.outbound_button=ui.Button('Request outbound',clicked_fn=self.request_outbound)
                 self.repair_button=ui.Button('Repair complete -> Reinspect',clicked_fn=self.repair)
                 ui.Button('Reload Code + Reset',clicked_fn=self.reload_code)
                 ui.Button('Rebuild + Check Motion',clicked_fn=self.rebuild)
@@ -103,6 +104,9 @@ class WarehouseExtension(omni.ext.IExt):
         self.timeline.stop()
         if self.runtime:self.runtime.reset()
 
+    def request_outbound(self):
+        if self.runtime and not self.busy and self.runtime.request_outbound():self.timeline.play()
+
     def repair(self):
         if self.runtime and self.timeline.is_playing() and not self.busy:self.runtime.repair()
 
@@ -119,16 +123,17 @@ class WarehouseExtension(omni.ext.IExt):
         if self.runtime and self.context.get_stage()!=self.runtime.stage:
             self.detach();self.info.text='Stage changed. Load Project to reconnect.'
         if not self.runtime or self.busy:
-            self.repair_button.enabled=False;return
+            self.repair_button.enabled=False;self.outbound_button.enabled=False;return
         try:
             if self.timeline.is_playing():
                 dt=max(0.,float(event.payload.get('dt',0.)))
                 self.runtime.tick(dt*self.speed,wall_dt=dt)
             c=self.runtime.cycle;r=self.runtime.storage
-            status=f'{self.speed:g}x | Model {self.runtime.sim_seconds:.1f}s | {c.state} | Vision {c.result}\nRobot {r.state}: {r.sample().phase}\nCell occupied: {r.cell_occupied}'
+            status=f'{self.speed:g}x | Model {self.runtime.sim_seconds:.1f}s | {c.state} | Vision {c.result}\nRobot {r.state}: {self.runtime.phase()}\nCell occupied: {r.cell_occupied}'
             if self.status.text!=status:self.status.text=status
             self.repair_button.enabled=c.state=='WAIT_REWORK' and self.timeline.is_playing()
-            if r.state=='DONE' and self.timeline.is_playing():
+            self.outbound_button.enabled=r.state=='DONE' and r.cell_occupied and self.runtime.outbound.state=='WAITING'
+            if self.runtime.finished and self.timeline.is_playing():
                 self.timeline.pause();self.export_metrics()
         except Exception as e:
             self.timeline.pause();self.info.text='Paused after error: '+str(e)
@@ -143,9 +148,9 @@ class WarehouseExtension(omni.ext.IExt):
         try:
             (ROOT/'logs').mkdir(exist_ok=True)
             with (ROOT/'logs/editor-motion-build.log').open('w',encoding='utf-8') as log:
-                for script in ('build_u_storage_demo.py','check_u_storage.py'):
+                for script in ('build_u_storage_demo.py','check_u_storage.py','build_u_outbound_demo.py','check_u_storage.py --outbound'):
                     self.info.text='Working: '+script+' (editor remains open)'
-                    self.process=subprocess.Popen(['C:/isaacsim/kit/python/python.exe',str(PROJECT/script)],cwd=str(ROOT),stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
+                    self.process=subprocess.Popen(['C:/isaacsim/kit/python/python.exe',str(PROJECT/script.split()[0]),*script.split()[1:]],cwd=str(ROOT),stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
                     while self.process.poll() is None:await asyncio.sleep(.2)
                     if self.process.returncode:raise RuntimeError('See logs/editor-motion-build.log')
                     self.process=None

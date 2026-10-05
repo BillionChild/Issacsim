@@ -70,3 +70,7 @@ Robot waits with open jaws at flange (0.43, -2.2, 2.35) m, level tool yaw 180 de
 Robot motion: 95.136 s -> about 54.5 s (43% reduction). Full FAIL/repair/OK model cycle excluding manual wait: 109.250 s. This is not a globally optimal path or a validated real robot cycle. The single-cell demo still stops after one engine; continuous multi-engine scheduling is separate.
 To apply in the open editor: Stop, Reload Code + Reset, Play. Load Project also refreshes the saved static layout. Delivered motion cache is already rebuilt.
 Verification: 273 motion geometry samples and 1097 standby/load U-loop samples passed; 3 storage and 3 runtime tests passed. Limits: no continuous swept-volume, self-collision or real grip physics validation; visual playback remains unverified.
+
+
+## Engine outbound
+See OUTBOUND_STATUS.md for the verified sequence and limitations. Toggle the extension off/on once to get **Request outbound**. After inbound completes, click it to open the sliding crossbar, retrieve and place the engine, return the robot, close the crossbar, and convey the loaded carrier north. Support pads are unchanged. Stop resets the full scene. Each stage pauses on completion; export CSV after outbound for both stages. A new inbound run requires Reset; multi-order scheduling is not implemented.

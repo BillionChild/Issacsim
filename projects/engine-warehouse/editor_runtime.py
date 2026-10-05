@@ -1,20 +1,25 @@
 """Editor-owned runtime: no SimulationApp, loop, windows, or subscriptions."""
 import csv,math,time
 from pathlib import Path
-from pxr import Usd,Sdf
+from pxr import Usd,Sdf,Gf
 from u_loop_cycle import ULoopCycle
 from u_storage import StorageTransfer
 from build_u_storage_demo import load_transfer
+from build_u_outbound_demo import load_transfer as load_outbound
+from outbound_cycle import OutboundCycle
+from dataclasses import replace
 from u_storage_scene import StorageScene
 
 
 class EditorRuntime:
     def __init__(self,stage):
-        for path in ('/World/Robot','/World/InlineLoad','/World/Rack'):
+        for path in ('/World/Robot','/World/InlineLoad','/World/Rack','/World/OutboundCarrier/SideRail0'):
             if not stage.GetPrimAtPath(path):raise ValueError('Load the U-layout warehouse scene first')
         self.cycle=ULoopCycle();self.storage=StorageTransfer(load_transfer())
+        self.outbound=OutboundCycle(load_outbound())
         self.stage=stage;self.layer=Sdf.Layer.CreateAnonymous('warehouse-runtime')
         self.session=stage.GetSessionLayer()
+        self.session_id=self.session.identifier
         self.session.subLayerPaths.insert(0,self.layer.identifier)
         try:
             with Usd.EditContext(stage,self.layer):self.adapter=StorageScene(stage)
@@ -24,9 +29,24 @@ class EditorRuntime:
 
     def apply(self):
         with Usd.EditContext(self.stage,self.layer):
-            self.adapter.apply(self.storage.sample(),self.cycle.position,self.cycle.pickup_allowed and self.storage.state=='WAITING',self.storage.cell_occupied)
+            frame=self.outbound.motion.sample() if self.outbound.state!='WAITING' else self.storage.sample()
+            if frame.owner=='outbound':frame=replace(frame,payload=frame.payload+[0,self.outbound.carrier_y,0])
+            self.adapter.apply(frame,self.cycle.position,self.cycle.pickup_allowed and self.storage.state=='WAITING',self.storage.cell_occupied)
+            for path,value in (
+                ('/World/OutboundCarrier',Gf.Vec3d(2.5,self.outbound.carrier_y,.7)),
+                ('/World/OutboundCarrier/SideRail0',Gf.Vec3d(-.53,0,.93-.70*self.outbound.gate_open))):
+                if self._out_values.get(path)!=value:
+                    self.stage.GetPrimAtPath(path).GetAttribute('xformOp:translate').Set(value);self._out_values[path]=value
+
+    @property
+    def finished(self):
+        return self.outbound.state=='DONE' if self.outbound.state!='WAITING' else self.storage.state=='DONE'
+
+    def request_outbound(self):
+        return self.outbound.start(self.storage.cell_occupied,self.storage.state=='DONE')
 
     def phase(self):
+        if self.outbound.state!='WAITING':return self.outbound.phase()
         return self.storage.sample().phase if self.storage.state!='WAITING' else self.cycle.state
 
     def tick(self,dt,wall_dt=None):
@@ -36,12 +56,15 @@ class EditorRuntime:
         # independent of rendered FPS. This is NOT the PhysX clock.
         self.cycle.start()
         remaining=dt
-        while remaining>1e-9 and self.storage.state!='DONE':
+        while remaining>1e-9 and not self.finished:
             step=min(1/60,remaining);remaining-=step
             phase_now=self.phase()
             self.phase_seconds[phase_now]=self.phase_seconds.get(phase_now,0.)+step
             self.sim_seconds+=step
-            if self.storage.state=='WAITING':
+            if self.outbound.state!='WAITING':
+                self.outbound.step(step)
+                self.storage.cell_occupied=self.outbound.motion.sample().owner=='cell'
+            elif self.storage.state=='WAITING':
                 self.cycle.step(step);self.storage.try_start(self.cycle)
             else:self.storage.step(step)
         self.apply()
@@ -51,6 +74,7 @@ class EditorRuntime:
 
     def reset(self):
         self.sim_seconds=0.;self.phase_seconds={};self.performance={}
+        self.outbound.reset();self._out_values={}
         self.cycle.reset();self.storage.reset();self.apply()
 
     def export_metrics(self):
@@ -67,5 +91,7 @@ class EditorRuntime:
 
     def close(self):
         # Kit can invalidate the stage wrapper before the update callback detaches.
-        paths=self.session.subLayerPaths
+        session=Sdf.Layer.Find(self.session_id)
+        if session is None:return
+        paths=session.subLayerPaths
         if self.layer.identifier in paths:paths.remove(self.layer.identifier)

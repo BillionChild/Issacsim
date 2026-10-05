@@ -37,14 +37,21 @@ async def test():
         r.tick(.5)
         if r.storage.state=='DONE':break
     assert r.storage.state=='DONE' and r.storage.cell_occupied
+    ext.request_outbound();assert r.outbound.state=='OPENING'
+    for _ in range(300):
+        r.tick(.5)
+        if r.finished:break
+    assert r.outbound.state=='DONE' and not r.storage.cell_occupied
+    assert r.outbound.carrier_y==2.8 and r.outbound.gate_open==0.
     ext.reset()
+    assert r.outbound.state=='WAITING' and r.outbound.carrier_y==0.
     assert r.cycle.state=='IDLE' and not r.storage.cell_occupied
     # Changing stages detaches the old controller and does not touch the new scene.
     await omni.usd.get_context().new_stage_async()
     for _ in range(3):await kit.next_update_async()
     assert ext.runtime is None
     await ext.load_async();assert ext.runtime
-    print('EDITOR INTEGRATION PASS: native Play/Pause/Stop, 3 reloads, storage cycle, stage change, reload without editor restart',flush=True)
+    print('EDITOR INTEGRATION PASS: native Play/Pause/Stop, 3 reloads, storage/outbound cycles, stage change, reload without editor restart',flush=True)
     ext.info.text='Verified. Click Play; repair input is manual. Stop resets; Reload applies code.'
 
 task=asyncio.ensure_future(test())
