@@ -8,8 +8,12 @@ lib=next(Path('C:/isaacsim/extscache').glob('omni.usd.libs-*'));sys.path.insert(
 from pxr import Usd,UsdGeom
 from storage_geometry import box,overlap,mesh_cube_overlap
 
-def check():
-    s=Usd.Stage.Open(str(ROOT/'external_assets/engines/caterham_duratec/usd/u_storage_motion_preview.usdc'))
+def check(outbound=False):
+    if outbound:
+        from build_u_outbound_demo import load_transfer as loader
+    else:loader=load_transfer
+    name='u_outbound_motion_preview.usdc' if outbound else 'u_storage_motion_preview.usdc'
+    s=Usd.Stage.Open(str(ROOT/'external_assets/engines/caterham_duratec/usd'/name))
     cache=UsdGeom.BBoxCache(Usd.TimeCode.Default(),['default','render'])
     robot=[];others=[]
     for p in s.Traverse():
@@ -40,7 +44,7 @@ def check():
         for (p,_),ob in zip(others,boxes):
             if str(p.GetPath()).startswith(('/World/Rack/','/World/OutboundCarrier/')) and overlap(pb,ob):
                 payload_hits.setdefault((name,str(p.GetPath())),float(sec))
-    motion=StorageTransfer(load_transfer());max_tilt=0.;max_slip=0.
+    motion=StorageTransfer(loader());max_tilt=0.;max_slip=0.
     for a,b in zip(motion.frames,motion.frames[1:]):
         if a.owner!='gripper' or b.owner!='gripper':continue
         motion.elapsed=(a.time+b.time)/2;f=motion.sample();p,r=fk(f.q,(0,0,0))
@@ -49,10 +53,10 @@ def check():
     result={'samples':len(times),'interval':.2,'broad_phase_pairs':broad,'robot_environment_hits':[dict(phase=k[0],robot=k[1],obstacle=k[2],time=v) for k,v in hits.items()],
         'payload_hits':[dict(phase=k[0],obstacle=k[1],time=v) for k,v in payload_hits.items()], 'below_floor':list(below),'max_midpoint_vertical_axis_error':max_tilt,'max_midpoint_grip_slip_m':max_slip,
         'limits':'Sampled external geometry only. No robot self-collision, engine/jig contact or full continuous swept-volume/physics verification.'}
-    (ROOT/'outputs/u_storage_geometry.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+    (ROOT/'outputs'/('u_outbound_geometry.json' if outbound else 'u_storage_geometry.json')).write_text(json.dumps(result,indent=2),encoding='utf-8')
     print(f'{len(times)} samples; robot hits={len(hits)}, payload hits={len(payload_hits)}, floor={len(below)}; tilt={max_tilt:.6f}, slip={max_slip:.6f}m')
     for h in result['robot_environment_hits'][:8]+result['payload_hits'][:4]:print(h)
     assert not hits and not payload_hits and not below
     assert max_tilt<.002 and max_slip<.002
 
-if __name__=='__main__':check()
+if __name__=='__main__':check('--outbound' in sys.argv)
