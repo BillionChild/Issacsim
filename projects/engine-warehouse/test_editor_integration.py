@@ -51,7 +51,17 @@ async def test():
     for _ in range(3):await kit.next_update_async()
     assert ext.runtime is None
     await ext.load_async();assert ext.runtime
-    print('EDITOR INTEGRATION PASS: native Play/Pause/Stop, 3 reloads, storage/outbound cycles, stage change, reload without editor restart',flush=True)
+    ext.multi=True;await ext.load_async();assert ext.runtime,ext.info.text
+    mr=ext.runtime;assert mr.is_multi
+    timeline.play()
+    for _ in range(8):await kit.next_update_async()
+    timeline.pause();paused=mr.sim_seconds
+    for _ in range(3):await kit.next_update_async()
+    assert mr.sim_seconds==paused
+    mr.tick(1200);assert mr.finished and mr.model.shipped==['E1','E3','E2']
+    ext.reset();assert mr.sim_seconds==0 and not mr.finished
+    ext.reload_code();assert ext.runtime.is_multi
+    print('EDITOR INTEGRATION PASS: native Play/Pause/Stop, 3 reloads, storage/outbound and three-engine cycles, stage change, reload without editor restart',flush=True)
     ext.info.text='Verified. Click Play; repair input is manual. Stop resets; Reload applies code.'
 
 task=asyncio.ensure_future(test())

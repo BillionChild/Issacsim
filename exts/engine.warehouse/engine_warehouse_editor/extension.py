@@ -11,6 +11,7 @@ from omni.kit.viewport.utility import get_active_viewport
 
 ROOT=Path(__file__).resolve().parents[3]
 PROJECT=ROOT/'projects/engine-warehouse'
+MULTI_SCENE=ROOT/'external_assets/engines/caterham_duratec/usd/warehouse_multi_layout.usda'
 SCENE=ROOT/'external_assets/engines/caterham_duratec/usd/warehouse_u_layout_preview.usda'
 MODULES=('fanuc_kinematics','u_loop_cycle','u_storage','u_storage_scene','build_u_storage_demo','u_outbound','build_u_outbound_demo','outbound_cycle','editor_runtime')
 _instance=None
@@ -21,13 +22,14 @@ class WarehouseExtension(omni.ext.IExt):
     def on_startup(self,ext_id):
         global _instance
         _instance=self
-        self.runtime=None;self.busy=False;self.task=None;self.process=None
+        self.runtime=None;self.busy=False;self.task=None;self.process=None;self.multi=False
         self.context=omni.usd.get_context();self.timeline=omni.timeline.get_timeline_interface()
         self.window=ui.Window('Engine Warehouse',width=450,height=430)
         with self.window.frame:
             with ui.VStack(spacing=7):
                 self.info=ui.Label('Load Project to begin. Existing editor stays open.',word_wrap=True)
                 ui.Button('Load Project',clicked_fn=self.load)
+                ui.Button('Load three-engine scenario',clicked_fn=self.load_multi)
                 with ui.HStack():
                     ui.Button('Play',clicked_fn=self.play)
                     ui.Button('Pause',clicked_fn=self.timeline.pause)
@@ -59,15 +61,18 @@ class WarehouseExtension(omni.ext.IExt):
         # Preserve Kit's normal unsaved-scene prompt before replacing a user's stage.
         omni.kit.window.file.prompt_if_unsaved_stage(lambda:self.schedule_load())
 
-    def schedule_load(self):
+    def load_multi(self):
+        if not self.busy:omni.kit.window.file.prompt_if_unsaved_stage(lambda:self.schedule_load(True))
+
+    def schedule_load(self,multi=False):
         if self.busy:return
-        self.busy=True
+        self.multi=multi;self.busy=True
         self.task=asyncio.ensure_future(self.load_async())
 
     async def load_async(self):
         self.busy=True;self.timeline.stop();self.detach()
         try:
-            result=await self.context.open_stage_async(str(SCENE))
+            result=await self.context.open_stage_async(str(MULTI_SCENE if self.multi else SCENE))
             if isinstance(result,tuple) and not result[0]:raise RuntimeError(str(result))
             self.busy=False;self.reload_code();self.camera('PreviewCamera')
         except Exception as e:self.info.text='Load failed: '+str(e)
@@ -79,11 +84,13 @@ class WarehouseExtension(omni.ext.IExt):
         try:
             if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
             # Compile current source directly: no same-second .pyc cache surprises.
-            for name in MODULES:
+            self.multi=bool(self.context.get_stage().GetDefaultPrim().GetAttribute('demo:multiEngine').Get())
+            modules=MODULES+('build_multi_motion','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
+            for name in modules:
                 file=PROJECT/(name+'.py');module=types.ModuleType(name);module.__file__=str(file)
                 sys.modules[name]=module
                 exec(compile(file.read_bytes(),str(file),'exec'),module.__dict__)
-            self.runtime=sys.modules['editor_runtime'].EditorRuntime(self.context.get_stage())
+            self.runtime=(sys.modules['multi_runtime'].MultiRuntime if self.multi else sys.modules['editor_runtime'].EditorRuntime)(self.context.get_stage())
             self.timeline.set_end_time(86400.)
             self.info.text='Ready. Play starts infeed; Stop resets. Reload keeps this editor open.'
         except Exception as e:
@@ -105,10 +112,10 @@ class WarehouseExtension(omni.ext.IExt):
         if self.runtime:self.runtime.reset()
 
     def request_outbound(self):
-        if self.runtime and not self.busy and self.runtime.request_outbound():self.timeline.play()
+        if self.runtime and not self.multi and not self.busy and self.runtime.request_outbound():self.timeline.play()
 
     def repair(self):
-        if self.runtime and self.timeline.is_playing() and not self.busy:self.runtime.repair()
+        if self.runtime and not self.multi and self.timeline.is_playing() and not self.busy:self.runtime.repair()
 
     def camera(self,name):
         viewport=get_active_viewport()
@@ -128,6 +135,11 @@ class WarehouseExtension(omni.ext.IExt):
             if self.timeline.is_playing():
                 dt=max(0.,float(event.payload.get('dt',0.)))
                 self.runtime.tick(dt*self.speed,wall_dt=dt)
+            if self.multi:
+                self.status.text=f'{self.speed:g}x | Model {self.runtime.sim_seconds:.1f}s\n'+self.runtime.status()
+                self.repair_button.enabled=False;self.outbound_button.enabled=False
+                if self.runtime.finished and self.timeline.is_playing():self.timeline.pause();self.export_metrics()
+                return
             c=self.runtime.cycle;r=self.runtime.storage
             status=f'{self.speed:g}x | Model {self.runtime.sim_seconds:.1f}s | {c.state} | Vision {c.result}\nRobot {r.state}: {self.runtime.phase()}\nCell occupied: {r.cell_occupied}'
             if self.status.text!=status:self.status.text=status
@@ -148,7 +160,9 @@ class WarehouseExtension(omni.ext.IExt):
         try:
             (ROOT/'logs').mkdir(exist_ok=True)
             with (ROOT/'logs/editor-motion-build.log').open('w',encoding='utf-8') as log:
-                for script in ('build_u_storage_demo.py','check_u_storage.py','build_u_outbound_demo.py','check_u_storage.py --outbound'):
+                scripts=('build_u_storage_demo.py','check_u_storage.py','build_u_outbound_demo.py','check_u_storage.py --outbound')
+                if self.multi:scripts+=('build_multi_motion.py','check_multi_motion.py','check_multi_layout.py')
+                for script in scripts:
                     self.info.text='Working: '+script+' (editor remains open)'
                     self.process=subprocess.Popen(['C:/isaacsim/kit/python/python.exe',str(PROJECT/script.split()[0]),*script.split()[1:]],cwd=str(ROOT),stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
                     while self.process.poll() is None:await asyncio.sleep(.2)

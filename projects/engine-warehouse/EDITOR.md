@@ -74,3 +74,7 @@ Verification: 273 motion geometry samples and 1097 standby/load U-loop samples p
 
 ## Engine outbound
 See OUTBOUND_STATUS.md for the verified sequence and limitations. Toggle the extension off/on once to get **Request outbound**. After inbound completes, click it to open the sliding crossbar, retrieve and place the engine, return the robot, close the crossbar, and convey the loaded carrier north. Support pads are unchanged. Stop resets the full scene. Each stage pauses on completion; export CSV after outbound for both stages. A new inbound run requires Reset; multi-order scheduling is not implemented.
+
+
+## Three-engine automatic replay
+Toggle Engine Warehouse off/on once, then **Load three-engine scenario -> Play**. The replay automatically performs E1 OK storage, E2 repair diversion, E3 OK storage, E2 repaired reinspection with E1 outbound priority, E2 storage, then E3/E2 outbound. Four transport carriers feed from the east; loaded carriers accumulate north. Empty inline pallets leave via the approved 2 m west recovery segment. Original Load Project remains the one-engine mode. See MULTI_ENGINE_PLAN.md for timing, boundaries and outputs. Three-engine replay takes about 491 model seconds (about 123 wall seconds at 4x under sufficient frame throughput).

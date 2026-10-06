@@ -3,7 +3,8 @@ from u_storage import Frame,IDLE,CELL
 from fanuc_kinematics import np,fk,ik
 OUTBOUND=np.array([2.5,0.,.85])
 
-def build_transfer():
+def build_transfer(cell=CELL):
+    cell=np.asarray(cell,dtype=float); dz=float(cell[2]-CELL[2])
     frames=[];q=IDLE.copy();opening=.12;owner='cell';yaw=90.
     def emit(phase,dt):
         nonlocal yaw
@@ -11,7 +12,7 @@ def build_transfer():
             p,r=fk(q,(0,0,0));payload=p+r@[.43,0,-.65]
             raw=np.degrees(np.arctan2(r[1,0],r[0,0]))-180
             yaw=raw+360*round((yaw-raw)/360)
-        else:payload=OUTBOUND.copy() if owner=='outbound' else CELL.copy()
+        else:payload=OUTBOUND.copy() if owner=='outbound' else cell.copy()
         frames.append(Frame(frames[-1].time+dt if frames else 0.,phase,q.copy(),opening,payload.copy(),yaw,owner))
     def smooth(t):return t*t*(3-2*t)
     def move(position,start_yaw,end_yaw,phase):
@@ -34,11 +35,11 @@ def build_transfer():
     move([1.8,-.8,2.35],180,270,'OUT_CLEAR_PICKUP')
     move([1.8,.8,2.35],270,360,'OUT_PASS_EAST')
     move([.6,1.6,2.35],360,450,'OUT_ALIGN_CELL')
-    move([.6,1.6,1.31],450,450,'OUT_LOWER_CELL_FRONT')
-    move([.6,2.57,1.31],450,450,'OUT_INSERT_OPEN_JAWS')
+    move([cell[0],1.6,1.31+dz],450,450,'OUT_LOWER_CELL_FRONT')
+    move([cell[0],cell[1]-.43,1.31+dz],450,450,'OUT_INSERT_OPEN_JAWS')
     jaws(0.,'OUT_CLOSE_JAWS');owner='gripper';emit('OUT_ATTACH',.04)
-    move([.6,2.57,1.45],450,450,'OUT_LIFT_FROM_CELL')
-    move([.6,1.6,1.45],450,450,'OUT_WITHDRAW_ENGINE')
+    move([cell[0],cell[1]-.43,1.45+dz],450,450,'OUT_LIFT_FROM_CELL')
+    move([cell[0],1.6,1.45+dz],450,450,'OUT_WITHDRAW_ENGINE')
     move([.6,1.6,2.35],450,450,'OUT_RAISE_CLEAR')
     move([1.8,.8,2.35],450,360,'OUT_TO_CARRIER')
     move([2.07,0,2.35],360,360,'OUT_ABOVE_CARRIER')

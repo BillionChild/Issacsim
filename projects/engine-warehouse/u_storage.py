@@ -21,7 +21,8 @@ class Frame:
     owner:str
 
 
-def build_transfer():
+def build_transfer(cell=CELL):
+    cell=np.asarray(cell,dtype=float); dz=float(cell[2]-CELL[2])
     frames=[];q=IDLE.copy();opening=.12;owner='pallet';yaw=0.
     def emit(phase,dt):
         nonlocal yaw
@@ -29,7 +30,7 @@ def build_transfer():
             p,r=fk(q,(0,0,0));payload=p+r@[.43,0,-.65]
             raw=np.degrees(np.arctan2(r[1,0],r[0,0]))-180
             yaw=raw+360*round((yaw-raw)/360)
-        else:payload=PICK.copy() if owner=='pallet' else CELL.copy()
+        else:payload=PICK.copy() if owner=='pallet' else cell.copy()
         frames.append(Frame(frames[-1].time+dt if frames else 0.,phase,q.copy(),opening,payload.copy(),yaw,owner))
     def smooth(t):return t*t*(3-2*t)
     def move(position,start_yaw,end_yaw,phase):
@@ -54,11 +55,11 @@ def build_transfer():
     move([1.8,-.8,2.35],180,270,'CLEAR_PICKUP')
     move([1.8,.8,2.35],270,360,'PASS_ABOVE_OUTBOUND')
     move([.6,1.6,2.35],360,450,'ALIGN_RACK')
-    move([.6,1.6,1.45],450,450,'LOWER_AT_RACK_FRONT')
-    move([.6,2.57,1.45],450,450,'INSERT_ENGINE')
-    move([.6,2.57,1.31],450,450,'SEAT_ENGINE')
+    move([cell[0],1.6,1.45+dz],450,450,'LOWER_AT_RACK_FRONT')
+    move([cell[0],cell[1]-.43,1.45+dz],450,450,'INSERT_ENGINE')
+    move([cell[0],cell[1]-.43,1.31+dz],450,450,'SEAT_ENGINE')
     owner='cell';emit('RELEASE_ON_CRADLE',.04);jaws(.12,'OPEN_JAWS')
-    move([.6,1.6,1.31],450,450,'WITHDRAW')
+    move([cell[0],1.6,1.31+dz],450,450,'WITHDRAW')
     move([.6,1.6,2.35],450,450,'RAISE_CLEAR')
     move([1.8,.8,2.35],450,360,'RETURN_NORTH')
     move([1.8,-.8,2.35],360,270,'RETURN_SOUTH')
