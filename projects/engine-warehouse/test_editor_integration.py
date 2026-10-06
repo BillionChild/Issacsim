@@ -71,6 +71,24 @@ async def test():
     ext.dashboard.update(mr,force=True)
     assert 'PENDING' in ext.dashboard.rows['E2'].text
     assert 'Stored: --' in ext.dashboard.detail.text
+    ext.dashboard.mode(True)
+    assert mr.model.manual
+    mr.tick(210)
+    ext.dashboard.select('E3')
+    assert ext.dashboard.order_button.enabled
+    ext.dashboard.request()
+    assert mr.model.requests==['E3']
+    ext.dashboard.request()
+    assert mr.model.requests==['E3']
+    ext.dashboard.select('E1');ext.dashboard.request()
+    mr.tick(230)
+    ext.dashboard.select('E2');ext.dashboard.request()
+    mr.tick(300)
+    assert mr.model.shipped==['E3','E1','E2'],mr.model.summary
+    ext.dashboard.update(mr,force=True)
+    assert 'Shipped 3' in ext.dashboard.summary.text
+    ext.reset()
+    assert mr.model.manual and mr.model.requests==[]
     ext.reload_code();assert ext.runtime.is_multi
     print('EDITOR INTEGRATION PASS: native Play/Pause/Stop, 3 reloads, storage/outbound and three-engine cycles, stage change, reload without editor restart',flush=True)
     ext.info.text='Verified. Click Play; repair input is manual. Stop resets; Reload applies code.'

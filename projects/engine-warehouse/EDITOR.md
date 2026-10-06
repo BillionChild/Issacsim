@@ -95,3 +95,19 @@ Stop/Reset clears the history through the existing model reset. Single-engine
 mode explicitly shows that the three-engine scenario must be loaded.
 The monitor polls at most four times per wall-clock second and does not
 modify the scene or scheduler. UI labels use English for Kit font portability.
+
+### Manual outbound orders
+
+After toggling the extension off/on for this update, load the three-engine
+scenario. Before Play (or after Stop / Reset), select `Manual outbound` in
+the monitor. Select a stored engine or occupied cell, then press
+`Request selected engine outbound`. Press Play to process orders if paused.
+Requests are FIFO; duplicates and engines not stored in a cell are rejected.
+An active robot job finishes before the next outbound job starts. If both
+scheduled cells are occupied, E2 waits until a requested shipment frees one.
+E2 can use either A or B. Loaded carriers stop by shipment order, preserving
+1.3 m spacing even when engines are requested in a different order.
+The monitor shows OUTBOUND_QUEUED / OUTBOUND_MOVING / SHIPPED.
+Reset clears orders and events but retains the chosen mode; Reload Code
+creates a fresh runtime in Auto demo mode. Mode changes during playback
+are disabled. Inspection/repair remain scripted in both modes.

@@ -12,7 +12,9 @@ def snapshot(model):
     for eid, engine in model.engines.items():
         events = {e['event']: e['time'] for e in model.events if e['engine'] == eid}
         start, stored = events.get('SCENE_ENTRY'), events.get('STORED')
-        state = ('SHIPPED' if eid in model.shipped else
+        state = ('OUTBOUND_QUEUED' if eid in model.requests else
+                 'OUTBOUND_MOVING' if model.active and model.active[:2]==('outbound',eid) else
+                 'SHIPPED' if eid in model.shipped else
                  'PENDING' if not engine['visible'] else
                  engine['cycle'].state if engine['owner'] == 'pallet' else engine['owner'].upper())
         rows[eid] = dict(state=state, vision=engine['cycle'].result or '-',
@@ -32,6 +34,12 @@ class Dashboard:
         with self.window.frame:
             with ui.VStack(spacing=8):
                 ui.Label('ENGINE WAREHOUSE | LIVE STATUS',height=26)
+                with ui.HStack(height=28):
+                    self.auto_button=ui.Button('Auto demo',clicked_fn=lambda:self.mode(False))
+                    self.manual_button=ui.Button('Manual outbound',clicked_fn=lambda:self.mode(True))
+                self.mode_label=ui.Label('',height=24)
+                self.order_button=ui.Button('Request selected engine outbound',height=30,clicked_fn=self.request)
+                self.queue=ui.Label('',height=26)
                 self.summary=ui.Label('',height=42,word_wrap=True)
                 ui.Label('Rack front view | select a cell or engine',height=20)
                 self.cells={}
@@ -49,6 +57,16 @@ class Dashboard:
                 ui.Label('Demo serials | simulated vision | times reset with Stop / Reset',height=24)
         self.update(None,force=True)
 
+    def mode(self,manual):
+        if self.runtime and getattr(self.runtime,'is_multi',False):
+            self.runtime.model.set_manual(manual)
+            self.update(self.runtime,force=True)
+
+    def request(self):
+        if self.runtime and getattr(self.runtime,'is_multi',False):
+            self.runtime.model.request_outbound(self.selected)
+            self.update(self.runtime,force=True)
+
     def show(self):
         self.window.visible=True
 
@@ -65,12 +83,18 @@ class Dashboard:
         if not force and runtime is self.runtime and now-self.last<.25:return
         self.last=now;self.runtime=runtime
         if not runtime or not getattr(runtime,'is_multi',False):
+            self.auto_button.enabled=False;self.manual_button.enabled=False;self.order_button.enabled=False
+            self.mode_label.text='';self.queue.text=''
             self.summary.text='Load three-engine scenario to view live inventory.'
             for cell,button in self.cells.items():button.text=cell+' | --';button.enabled=False
             for eid,button in self.rows.items():button.text=serial(eid)+' | --';button.enabled=False
             self.detail.text='No three-engine scenario connected.';self.events.text=''
             return
         model=runtime.model;rows=snapshot(model)
+        self.auto_button.enabled=self.manual_button.enabled=model.time==0
+        self.mode_label.text=('MANUAL OUTBOUND' if model.manual else 'AUTO DEMO')+' | Reset before changing mode'
+        self.order_button.enabled=model.can_request(self.selected)
+        self.queue.text='Outbound queue: '+(' -> '.join(serial(e) for e in model.requests) or '--')
         waiting=sum(e['visible'] and e['owner']=='pallet' for e in model.engines.values())
         repair=sum(r['state']=='WAIT_REWORK' for r in rows.values())
         occupied=sum(e is not None for e in model.cells.values())

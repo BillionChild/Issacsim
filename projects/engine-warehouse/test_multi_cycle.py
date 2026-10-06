@@ -70,6 +70,43 @@ class MultiCycleTests(unittest.TestCase):
             if model.done:break
         self.assertTrue(model.done)
 
+    def test_manual_orders_wait_fifo_reset_and_spacing(self):
+        model=MultiCycle(motions(),empty_pallet_route=True)
+        self.assertTrue(model.set_manual(True))
+        self.assertFalse(model.request_outbound('E2'))
+        model.step(150)
+        self.assertEqual(model.shipped,[])
+        self.assertFalse(model.set_manual(False))
+        self.assertTrue(model.request_outbound('E3'))
+        self.assertFalse(model.request_outbound('E3'))
+        self.assertTrue(model.request_outbound('E1'))
+        for _ in range(12000):
+            model.step(.05)
+            if model.can_request('E2'):model.request_outbound('E2')
+            carriers=list(model.carriers.values())
+            for i,a in enumerate(carriers):
+                for b in carriers[i+1:]:
+                    self.assertGreaterEqual(math.dist(a['position'],b['position']),1.3-1e-8)
+            if model.done:break
+        self.assertTrue(model.done)
+        self.assertEqual(model.shipped,['E3','E1','E2'])
+        self.assertEqual(model.requests,[])
+        model.reset()
+        self.assertTrue(model.manual)
+        self.assertEqual(model.requests,[])
+        self.assertTrue(model.set_manual(False))
+
+    def test_request_during_robot_return_waits(self):
+        model=MultiCycle(motions())
+        model.set_manual(True)
+        while model.engines['E1']['owner']!='cell':model.step(.05)
+        active=model.active
+        self.assertTrue(model.request_outbound('E1'))
+        self.assertIs(model.active,active)
+        self.assertFalse(model.request_outbound('E1'))
+        model.step(.05)
+        self.assertEqual(model.active[0],'inbound')
+
     def test_dt_validation_and_zero(self):
         model=MultiCycle(motions())
         for dt in [-1,float('nan'),float('inf')]:

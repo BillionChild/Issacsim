@@ -22,9 +22,11 @@ class MultiCycle:
                 frames = motions[kind, cell]
                 if not frames or frames[0].time != 0 or any(b.time <= a.time for a,b in zip(frames, frames[1:])):
                     raise ValueError('Motion frames must start at zero and increase strictly')
+        self.manual = False
         self.reset()
 
     def reset(self):
+        self.requests = []; self.ship_targets = {}
         self.time = 0.; self.events = []; self.cells = {'A': None, 'B': None}
         self.engines = {}
         for i, script in enumerate((('OK',), ('FAIL','OK'), ('OK',)), 1):
@@ -37,6 +39,33 @@ class MultiCycle:
         self.stage = 0; self.shipped = []; self.empty_routes = {}; self._seen = set()
         self.engines['E1']['cycle'].start()
         self._event('SCENE_ENTRY','E1')
+
+    def set_manual(self, manual):
+        # Mode changes are only accepted before playback / after Reset.
+        if self.time != 0:return False
+        self.manual = bool(manual)
+        self.requests.clear()
+        return True
+
+    def can_request(self, eid):
+        return (self.manual and eid in self.engines
+                and self.engines[eid]['owner']=='cell'
+                and eid not in self.requests and eid not in self.shipped
+                and not (self.active and self.active[:2]==('outbound',eid)))
+
+    def request_outbound(self, eid):
+        if not self.can_request(eid):return False
+        self.requests.append(eid);self._event('OUTBOUND_REQUEST',eid)
+        return True
+
+    def _manual_schedule(self):
+        if self.active:return
+        e=self.engines['E2']
+        if e['owner']=='pallet':
+            for cell,occupant in self.cells.items():
+                if occupant is None and self._inbound('E2',cell):return
+        self.done=len(self.shipped)==3 and not any(self.empty_routes.values())
+        self.phase='DONE' if self.done else 'WAITING_FOR_ORDER_OR_FREE_CELL'
 
     def _event(self, event, engine):
         self.events.append(dict(time=self.time, event=event, engine=engine))
@@ -55,6 +84,7 @@ class MultiCycle:
         cell = self.engines[eid]['cell']
         transfer = OutboundCycle(self.motions['outbound',cell])
         if not transfer.start(self.cells[cell]==eid,True):return False
+        self.ship_targets[eid] = 5.4-1.3*len(self.shipped)
         self.active = ('outbound',eid,cell,transfer,cid)
         self._event('OUTBOUND_START',eid)
         return True
@@ -102,11 +132,11 @@ class MultiCycle:
             if kind=='outbound':
                 carrier=self.carriers[cid];carrier['gate_open']=t.gate_open
                 if t.state in ('DISPATCH','DONE'):
-                    y=min(self.SHIP_Y[eid],carrier['position'][1]+self.SPEED*dt)
+                    y=min(self.ship_targets[eid],carrier['position'][1]+self.SPEED*dt)
                     carrier['position']=(2.5,y,.7)
                 if e['owner']=='carrier':
                     p=carrier['position']; e['position']=(p[0],p[1],float(self.motions['outbound',cell][-1].payload[2]))
-                finished=t.state=='DONE' and carrier['position'][1]>=self.SHIP_Y[eid]-1e-9
+                finished=t.state=='DONE' and carrier['position'][1]>=self.ship_targets[eid]-1e-9
             else:finished=t.state=='DONE'
             self.phase=f'{eid}_{kind.upper()}_{t.state}'
             if finished:
@@ -121,6 +151,9 @@ class MultiCycle:
                 x=max(2.5+i*1.3,c['position'][0]-self.SPEED*dt)
                 c['position']=(x,0.,.7)
         self._empty_step(dt)
+        if self.manual and not self.active and self.requests and self._outbound(self.requests[0]):
+            self.requests.pop(0)
+            return
         e1,e2,e3=(self.engines[e] for e in ('E1','E2','E3'))
         if self.stage==0 and self._inbound('E1','A'):self.stage=1
         elif self.stage==1 and not self.active:
@@ -132,6 +165,7 @@ class MultiCycle:
         elif self.stage==3 and self._inbound('E3','B'):self.stage=4
         elif self.stage==4 and not self.active:
             e2['cycle'].complete_rework();self._event('REWORK_COMPLETE','E2');self.stage=5
+        elif self.manual and self.stage>=5:self._manual_schedule()
         elif self.stage==5 and e2['cycle'].state=='TO_PICKUP' and self._outbound('E1'):self.stage=6
         elif self.stage==6 and 'E1' in self.shipped and self._inbound('E2','A'):self.stage=7
         elif self.stage==7 and not self.active and self._outbound('E3'):self.stage=8
