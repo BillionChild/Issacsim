@@ -53,13 +53,24 @@ async def test():
     await ext.load_async();assert ext.runtime
     ext.multi=True;await ext.load_async();assert ext.runtime,ext.info.text
     mr=ext.runtime;assert mr.is_multi
+    ext.dashboard.update(mr,force=True)
+    assert 'ENG-0001' in ext.dashboard.rows['E1'].text
+    assert '0.0s' in ext.dashboard.detail.text
     timeline.play()
     for _ in range(8):await kit.next_update_async()
     timeline.pause();paused=mr.sim_seconds
     for _ in range(3):await kit.next_update_async()
     assert mr.sim_seconds==paused
     mr.tick(1200);assert mr.finished and mr.model.shipped==['E1','E3','E2']
+    ext.dashboard.update(mr,force=True)
+    assert 'Shipped 3' in ext.dashboard.summary.text
+    assert 'SHIPPED' in ext.dashboard.rows['E2'].text
+    ext.dashboard.select('E2')
+    assert 'ENG-0002' in ext.dashboard.detail.text
     ext.reset();assert mr.sim_seconds==0 and not mr.finished
+    ext.dashboard.update(mr,force=True)
+    assert 'PENDING' in ext.dashboard.rows['E2'].text
+    assert 'Stored: --' in ext.dashboard.detail.text
     ext.reload_code();assert ext.runtime.is_multi
     print('EDITOR INTEGRATION PASS: native Play/Pause/Stop, 3 reloads, storage/outbound and three-engine cycles, stage change, reload without editor restart',flush=True)
     ext.info.text='Verified. Click Play; repair input is manual. Stop resets; Reload applies code.'

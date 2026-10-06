@@ -78,3 +78,20 @@ See OUTBOUND_STATUS.md for the verified sequence and limitations. Toggle the ext
 
 ## Three-engine automatic replay
 Toggle Engine Warehouse off/on once, then **Load three-engine scenario -> Play**. The replay automatically performs E1 OK storage, E2 repair diversion, E3 OK storage, E2 repaired reinspection with E1 outbound priority, E2 storage, then E3/E2 outbound. Four transport carriers feed from the east; loaded carriers accumulate north. Empty inline pallets leave via the approved 2 m west recovery segment. Original Load Project remains the one-engine mode. See MULTI_ENGINE_PLAN.md for timing, boundaries and outputs. Three-engine replay takes about 491 model seconds (about 123 wall seconds at 4x under sufficient frame throughput).
+
+## Warehouse monitor
+
+Toggle Engine Warehouse off/on once after this UI update. The dockable
+`Engine Warehouse Monitor` window opens with the extension; reopen it using
+`Open warehouse monitor`. Load three-engine scenario, then Play.
+
+The read-only monitor shows demo serials ENG-0001..0003, engine states and
+vision results, a front-view 2x2 rack map, selected-engine entry/storage
+times, and the seven latest events. Click an engine or occupied cell for
+details. A is right lower, B is right upper; the two left cells are unused.
+Times are simulation seconds: SCENE_ENTRY starts intake, STORED finishes
+intake, including repair delays. Playback speed does not change these times.
+Stop/Reset clears the history through the existing model reset. Single-engine
+mode explicitly shows that the three-engine scenario must be loaded.
+The monitor polls at most four times per wall-clock second and does not
+modify the scene or scheduler. UI labels use English for Kit font portability.

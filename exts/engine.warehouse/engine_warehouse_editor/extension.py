@@ -1,6 +1,7 @@
 """Thin Kit host. Reloadable project logic lives outside the extension package."""
 import asyncio,sys,types,subprocess
 from pathlib import Path
+from .dashboard import Dashboard
 import omni.ext
 import omni.ui as ui
 import omni.usd
@@ -24,10 +25,12 @@ class WarehouseExtension(omni.ext.IExt):
         _instance=self
         self.runtime=None;self.busy=False;self.task=None;self.process=None;self.multi=False
         self.context=omni.usd.get_context();self.timeline=omni.timeline.get_timeline_interface()
+        self.dashboard=Dashboard()
         self.window=ui.Window('Engine Warehouse',width=450,height=430)
         with self.window.frame:
             with ui.VStack(spacing=7):
                 self.info=ui.Label('Load Project to begin. Existing editor stays open.',word_wrap=True)
+                ui.Button('Open warehouse monitor',clicked_fn=self.dashboard.show)
                 ui.Button('Load Project',clicked_fn=self.load)
                 ui.Button('Load three-engine scenario',clicked_fn=self.load_multi)
                 with ui.HStack():
@@ -129,6 +132,7 @@ class WarehouseExtension(omni.ext.IExt):
     def update(self,event):
         if self.runtime and self.context.get_stage()!=self.runtime.stage:
             self.detach();self.info.text='Stage changed. Load Project to reconnect.'
+        self.dashboard.update(self.runtime)
         if not self.runtime or self.busy:
             self.repair_button.enabled=False;self.outbound_button.enabled=False;return
         try:
@@ -179,5 +183,6 @@ class WarehouseExtension(omni.ext.IExt):
         if self.task and not self.task.done():self.task.cancel()
         if self.process and self.process.poll() is None:self.process.terminate()
         self.detach()
+        self.dashboard.close()
         if self.window:self.window.destroy();self.window=None
         _instance=None
