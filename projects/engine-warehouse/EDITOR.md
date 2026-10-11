@@ -111,3 +111,20 @@ The monitor shows OUTBOUND_QUEUED / OUTBOUND_MOVING / SHIPPED.
 Reset clears orders and events but retains the chosen mode; Reload Code
 creates a fresh runtime in Auto demo mode. Mode changes during playback
 are disabled. Inspection/repair remain scripted in both modes.
+
+## Pickup anomaly lab (stage 1)
+
+Toggle the extension off/on, then Open pickup anomaly lab -> Load pickup test
+scene. Select normal, stop_x, lateral_y, yaw, occluded, or a combined preset.
+Capture RGB + depth writes outputs/pickup-captures/<timestamp>-<case>/.
+Observation contains rgb.png, depth_m.npy and camera.json; ground_truth.json
+is evaluation-only. Masked depth is NaN. Occlusion here is an observation
+mask, not a physical obstacle; it appears only in exported images.
+
+The referenced preview keeps original assets unchanged. Robot is hidden and
+no motion controller is attached. X=30 mm, Y=15 mm and yaw=2 degrees are
+small experimental inputs, not certified correction ranges. Engine/pallet/
+fixture share one transform. Select normal to reset. The top-down 512x512
+RGB-D camera uses a 24 mm focal length. This stage provides sensor capture;
+learned perception, confidence scoring, corrected trajectories and recovery
+are subsequent stages and are not implemented by this panel.
