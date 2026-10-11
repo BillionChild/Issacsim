@@ -147,3 +147,27 @@ together, with INJECT -> OBSERVE -> ESTIMATE -> CORRECT -> VERIFY. Display
 actual measured errors and decision reasons once perception is connected.
 Never present injected ground truth as a detection, or scripted attachment
 as verified physical grasp. Current implementation ends at OBSERVE.
+
+## Wrist RGB perception (stage 2)
+
+Open pickup anomaly lab -> Load pickup test scene -> select case ->
+Estimate from wrist RGB. The evidence window shows nominal pallet outline
+in green and learned pose estimate in orange, plus X/Y in mm and yaw in
+degrees. Results are estimates; robot correction is not yet executed.
+Selecting another case hides stale evidence. Missing/dark regions and changed
+wrist calibration produce HOLD. These are conservative demo gates, not
+calibrated probability or a general out-of-distribution detector.
+
+The current model is NumPy ridge RGB regression trained on 125 real rendered
+views, with 24 held-out random poses. It estimates the rigid engine/pallet
+assembly, assuming the engine remains correctly seated on its pins. It is
+not a pretrained foundation model or keypoint detector. Training is limited
+to fixed geometry, camera, lighting and +/-40 mm X, +/-25 mm Y, +/-3 deg yaw.
+No real-world or unseen-lighting generalization is claimed.
+
+Reproduce with Isaac Python: projects/engine-warehouse/train_pickup_perception.py.
+Local model and evaluation report are outputs/pickup-perception/model.npz and
+evaluation.json; model files are ignored by Git. Runtime predict(rgb) has no
+USD, case name or truth inputs. The separate training harness uses truth for
+labels and evaluation only. Mask injection affects captured wrist RGB,
+not the raw live Robot Camera viewport.

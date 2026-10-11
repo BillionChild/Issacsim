@@ -17,11 +17,12 @@ class PickupLab:
         with self.window.frame:
             with ui.VStack(spacing=5):
                 ui.Label('1. INJECT -> 2. OBSERVE -> 3. ESTIMATE -> 4. CORRECT -> 5. VERIFY',height=35,word_wrap=True)
-                ui.Label('Current stage: OBSERVE | estimation / correction not connected',height=32,word_wrap=True)
+                self.process=ui.Label('OBSERVE ready | robot correction not connected',height=32,word_wrap=True)
                 ui.Button('Open Robot Camera',clicked_fn=self.open_robot_camera)
                 ui.Button('Load pickup test scene',clicked_fn=self.load)
                 for name in CASES:
                     ui.Button(name,clicked_fn=lambda n=name:self.select(n))
+                ui.Button('Estimate from wrist RGB',clicked_fn=self.estimate)
                 ui.Button('Capture RGB + depth',clicked_fn=self.capture)
                 self.status=ui.Label('Load the test scene first.',word_wrap=True)
     def open_robot_camera(self):
@@ -60,6 +61,8 @@ class PickupLab:
         if not self.product or omni.usd.get_context().get_stage()!=self.stage:
             self.status.text='Load pickup test scene first.';return
         self.case=name;truth=apply_case(self.stage,name)
+        self.process.text='INJECTED: '+name+' | press Estimate for a fresh observation'
+        if getattr(self,'evidence_window',None):self.evidence_window.visible=False
         self.status.text=f'{name}: {truth}\nMask affects captured images only.'
     def capture(self):
         if self.task and not self.task.done():return
@@ -87,9 +90,60 @@ class PickupLab:
             self.status.text='Saved: '+str(out)
             return out
         except Exception as e:self.status.text='Capture failed: '+str(e);raise
+    def estimate(self):
+        if self.task and not self.task.done():return
+        self.start(self.estimate_async())
+
+    async def estimate_async(self):
+        if getattr(self,'evidence_window',None):self.evidence_window.visible=False
+        product=None;annotator=None
+        try:
+            if not self.product or omni.usd.get_context().get_stage()!=self.stage:
+                raise RuntimeError('Load pickup test scene first')
+            from pickup_perception import Predictor,annotated,MODEL
+            from wrist_camera import CAMERA as WRIST
+            from pxr import UsdGeom
+            if not MODEL.exists():raise RuntimeError('Trained model missing: run train_pickup_perception.py')
+            predictor=Predictor()
+            matrix=np.array(UsdGeom.Xformable(self.stage.GetPrimAtPath(WRIST)).ComputeLocalToWorldTransform(0).GetInverse())
+            if not np.allclose(matrix,predictor.data['world_to_camera'],atol=1e-5):
+                raise RuntimeError('HOLD: wrist pose differs from training. Reload test scene.')
+            self.process.text='OBSERVE: capturing wrist RGB...'
+            product=rep.create.render_product(WRIST,(512,512))
+            annotator=rep.AnnotatorRegistry.get_annotator('rgb');annotator.attach([product])
+            for _ in range(4):await rep.orchestrator.step_async(rt_subframes=4)
+            if omni.usd.get_context().get_stage()!=self.stage:raise RuntimeError('Stage changed')
+            image=np.asarray(annotator.get_data()).copy()
+            # Sensor fault injection precedes estimator; no case or labels enter predict().
+            image,_=mask_observation(image,np.ones((512,512)),CASES[self.case][3])
+            result=predictor.predict(image)
+            dx,dy,yaw=result['pose']
+            state=('OFFSET DETECTED' if max(abs(dx),abs(dy))>5 or abs(yaw)>.5 else 'WITHIN DEMO TOLERANCE') if result['accepted'] else result['reason']
+            self.process.text=(f'{state} | X {dx:+.1f} mm, Y {dy:+.1f} mm, yaw {yaw:+.2f} deg. Correction NOT executed.' if result['accepted'] else state+' | Pose withheld. Re-observe before moving.')
+            out=ROOT/'outputs/pickup-estimates';out.mkdir(exist_ok=True)
+            stamp=str(time.time_ns());path=out/(stamp+'.png')
+            annotated(image,result,predictor.data,path)
+            (out/(stamp+'.json')).write_text(json.dumps(result,indent=2))
+            if getattr(self,'evidence_window',None):self.evidence_window.destroy()
+            self.evidence_window=ui.Window('Robot perception | evidence',width=540,height=610)
+            with self.evidence_window.frame:
+                with ui.VStack():
+                    ui.Label(self.process.text,height=65,word_wrap=True)
+                    ui.Image(str(path),width=512,height=512)
+                    ui.Label('Learned RGB regression | fixed scene | no physical grasp validation',height=25)
+            return result
+        except Exception as e:
+            self.process.text='HOLD: '+str(e)
+            self.status.text=self.process.text
+            return None
+        finally:
+            if annotator and product:annotator.detach([product])
+            if product:product.destroy()
+
     def close(self):
         if self.task and not self.task.done():self.task.cancel()
         self.release();self.window.destroy()
+        if getattr(self,'evidence_window',None):self.evidence_window.destroy();self.evidence_window=None
         if getattr(self,'robot_view',None):self.robot_view.destroy();self.robot_view=None
 
 def show():
