@@ -171,3 +171,25 @@ evaluation.json; model files are ignored by Git. Runtime predict(rgb) has no
 USD, case name or truth inputs. The separate training harness uses truth for
 labels and evaluation only. Mask injection affects captured wrist RGB,
 not the raw live Robot Camera viewport.
+
+## Vision-guided pregrasp correction (stage 3)
+
+In the pickup lab, select a case and press Run vision-guided approach. Each
+run captures fresh wrist RGB, rejects HOLD observations, solves joint angles
+from the estimate, checks all 161 sampled poses on a private stage including
+the camera/bracket, animates alignment and descent, verifies FK tracking,
+then reverses the same path to the observation pose. No timeline Play needed.
+
+The endpoint is 350 mm above the existing contact pose. Fingers stay open
+and the engine/pallet never moves. This demonstrates corrected approach,
+not grasp or completed warehouse recovery. Verify means joints reached the
+image-derived target; it does not mean independent visual confirmation of
+true engine alignment. The original fixed-pose image model is not valid at
+the descended wrist pose. Re-estimation is available after returning.
+
+Geometry checks use sampled robot/environment bounds and triangle/cube
+checks; no self-collision, continuous swept volume, dynamic obstacles or
+physical contact validation is claimed. Scene/object edits during movement
+stop the sequence. If interrupted, reload the test scene before retrying.
+Reports: outputs/pickup-corrections/*.json. UI phases: PLAN, CHECK, CORRECT,
+VERIFY, RETURN, PREGRASP VERIFIED. Rejected observations cause no motion.

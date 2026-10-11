@@ -21,3 +21,14 @@ No automatic correction or physical grasp claim is made in this stage.
 Artifacts (local, ignored): outputs/pickup-perception/model.npz,
 evaluation.json, combined-estimate.png. Reproduction script:
 train_pickup_perception.py; integration: test_pickup_perception_editor.py.
+
+## Stage 3: image-guided pregrasp approach
+Implemented Run vision-guided approach: fresh inference -> bounded IK ->
+161-pose sampled environment clearance -> open-jaw pregrasp -> FK tracking
+check -> reversed return. Stops 350 mm above contact due to unvalidated
+gripper/camera geometry for final grasp. This is approach correction only.
+Offline tests: rejection of invalid/held estimates and normal/combined geometry
+passed. Isaac integration: occlusion caused no joint change; combined RGB
+estimate drove approach, returned to original pose, and allowed re-inference.
+Tracking is against estimated target; independent true-pose/physical grasp
+verification and full recovery remain outstanding.

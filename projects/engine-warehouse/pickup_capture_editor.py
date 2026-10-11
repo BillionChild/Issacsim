@@ -23,6 +23,7 @@ class PickupLab:
                 for name in CASES:
                     ui.Button(name,clicked_fn=lambda n=name:self.select(n))
                 ui.Button('Estimate from wrist RGB',clicked_fn=self.estimate)
+                ui.Button('Run vision-guided approach',clicked_fn=self.correct)
                 ui.Button('Capture RGB + depth',clicked_fn=self.capture)
                 self.status=ui.Label('Load the test scene first.',word_wrap=True)
     def open_robot_camera(self):
@@ -128,7 +129,7 @@ class PickupLab:
             self.evidence_window=ui.Window('Robot perception | evidence',width=540,height=610)
             with self.evidence_window.frame:
                 with ui.VStack():
-                    ui.Label(self.process.text,height=65,word_wrap=True)
+                    self.evidence_status=ui.Label(self.process.text,height=65,word_wrap=True)
                     ui.Image(str(path),width=512,height=512)
                     ui.Label('Learned RGB regression | fixed scene | no physical grasp validation',height=25)
             return result
@@ -139,6 +140,66 @@ class PickupLab:
         finally:
             if annotator and product:annotator.detach([product])
             if product:product.destroy()
+
+    def correct(self):
+        if self.task and not self.task.done():return
+        self.start(self.correct_async())
+
+    def correction_status(self,text):
+        self.process.text=text
+        if getattr(self,'evidence_status',None):self.evidence_status.text=text
+
+    async def correct_async(self,playback_scale=1.):
+        # Every run captures a fresh observation. No saved estimates are replayed.
+        result=await self.estimate_async()
+        if not result or not result['accepted']:return None
+        from pickup_correction import plan,clearance,joint_attributes,write_joints,fk
+        import omni.kit.app
+        from pxr import UsdGeom
+        try:
+            self.correction_status('PLAN: solving joints from image estimate...')
+            await omni.kit.app.get_app().next_update_async()
+            frames,target,yaw=plan(result)
+            self.correction_status('CHECK: sampled robot / environment clearance...')
+            await omni.kit.app.get_app().next_update_async()
+            report=clearance(self.stage,frames)
+            attrs=joint_attributes(self.stage)
+            # This check detects external edits; target generation uses only the estimate.
+            source=self.stage.GetPrimAtPath('/World/TestLoad')
+            source_matrix=UsdGeom.Xformable(source).ComputeLocalToWorldTransform(0)
+            async def animate(path,label):
+                start=time.monotonic()
+                for elapsed,q in path:
+                    if omni.usd.get_context().get_stage()!=self.stage:raise RuntimeError('Stage changed; movement stopped')
+                    if UsdGeom.Xformable(source).ComputeLocalToWorldTransform(0)!=source_matrix:
+                        raise RuntimeError('Object changed after observation; movement stopped')
+                    while time.monotonic()-start<elapsed*playback_scale:
+                        await omni.kit.app.get_app().next_update_async()
+                    if omni.usd.get_context().get_stage()!=self.stage or UsdGeom.Xformable(source).ComputeLocalToWorldTransform(0)!=source_matrix:
+                        raise RuntimeError('Scene changed while waiting; movement stopped')
+                    write_joints(attrs,q)
+                    self.correction_status(label+f' | {elapsed:.1f}/{path[-1][0]:.1f}s')
+            await animate(frames,'CORRECT: moving to estimated pregrasp')
+            measured=np.radians([a.Get()*sign for a,sign in zip(attrs,(1,1,-1,-1,-1,-1))])
+            position,rotation=fk(measured,(0,0,0))
+            residual_mm=float(np.linalg.norm(position-target)*1000)
+            actual_yaw=float(np.degrees(np.arctan2(rotation[1,0],rotation[0,0])))
+            residual_deg=abs((actual_yaw-yaw+180)%360-180)
+            if residual_mm>.2 or residual_deg>.02:raise RuntimeError('Approach tracking verification failed')
+            self.correction_status(f'VERIFY: planned target reached ({residual_mm:.3f} mm tracking error). No contact / grasp.')
+            until=time.monotonic()+2*playback_scale
+            while time.monotonic()<until:await omni.kit.app.get_app().next_update_async()
+            duration=frames[-1][0]
+            await animate([(duration-t,q) for t,q in reversed(frames)],'RETURN: observation pose')
+            report.update(estimated_pose=result['pose'],tracking_error_mm=residual_mm,tracking_error_deg=residual_deg,
+                target=target.tolist(),status='PREGRASP_VERIFIED',verification='FK vs estimated target, not true engine pose or physical grasp')
+            out=ROOT/'outputs/pickup-corrections';out.mkdir(exist_ok=True)
+            (out/(str(time.time_ns())+'.json')).write_text(json.dumps(report,indent=2))
+            self.correction_status(f'PREGRASP VERIFIED | {residual_mm:.3f} mm tracking error | returned to observation. Grasp not executed.')
+            return report
+        except Exception as e:
+            self.correction_status('HOLD: '+str(e))
+            return None
 
     def close(self):
         if self.task and not self.task.done():self.task.cancel()

@@ -52,5 +52,5 @@ def annotated(rgb,result,calibration,path):
     draw.text((10,8),'GREEN: nominal pallet | ORANGE: learned estimate',fill='white')
     dx,dy,yaw=result['pose']
     draw.text((10,25),f'X {dx:+.1f} mm   Y {dy:+.1f} mm   yaw {yaw:+.2f} deg' if result['accepted'] else 'Pose withheld: observation cannot be trusted',fill='white')
-    draw.text((10,43),result['reason']+' | no robot command',fill='white')
+    draw.text((10,43),result['reason']+' | observation snapshot',fill='white')
     im.save(path)
