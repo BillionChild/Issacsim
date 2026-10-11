@@ -28,7 +28,7 @@ def build():
     # Do not let the warehouse extension attach its scheduler to this test stage.
     from pxr import Sdf
     world.GetPrim().CreateAttribute('demo:multiEngine',Sdf.ValueTypeNames.Bool).Set(False)
-    for path in ('InlineLoad','CarriedEngine','Robot'):
+    for path in ('InlineLoad','CarriedEngine'):
         s.OverridePrim('/World/'+path).SetActive(False)
     UsdGeom.SetStageUpAxis(s,'Z');UsdGeom.SetStageMetersPerUnit(s,1.)
     load=UsdGeom.Xform.Define(s,'/World/TestLoad')
@@ -43,6 +43,8 @@ def build():
     cam.CreateVerticalApertureAttr(20.955)
     cam.CreateClippingRangeAttr(Gf.Vec2f(.05,20.))
     s.SetStartTimeCode(0);s.SetEndTimeCode(86400)
+    from wrist_camera import attach
+    attach(s)
     apply_case(s,'normal');s.GetRootLayer().Save()
     return OUTPUT
 

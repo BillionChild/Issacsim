@@ -128,3 +128,22 @@ fixture share one transform. Select normal to reset. The top-down 512x512
 RGB-D camera uses a 24 mm focal length. This stage provides sensor capture;
 learned perception, confidence scoring, corrected trajectories and recovery
 are subsequent stages and are not implemented by this panel.
+
+## Robot Camera (wrist view)
+
+After extension off/on, load the three-engine scene or pickup anomaly lab,
+then Open Robot Camera. Keep the main viewport on the overall process and
+place the Robot Camera window beside it. The camera is rigidly parented to
+EngineJig; it follows joint motion, without tracking or teleporting its aim.
+A 12 mm wide-angle lens and a side bracket aim toward the engine/pallet.
+The lab robot is stationary; normal vs x_y_yaw can be compared from the same
+camera pose. Observation masks still apply to exported top-camera images
+only, not the live wrist viewport. Bracket geometry is conceptual and has
+not undergone full-cycle clearance verification. Close the extra viewport
+when not needed to reduce rendering cost.
+
+Portfolio presentation requirement: show overall process and robot view
+together, with INJECT -> OBSERVE -> ESTIMATE -> CORRECT -> VERIFY. Display
+actual measured errors and decision reasons once perception is connected.
+Never present injected ground truth as a detection, or scripted attachment
+as verified physical grasp. Current implementation ends at OBSERVE.

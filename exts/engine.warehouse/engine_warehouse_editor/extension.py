@@ -31,6 +31,7 @@ class WarehouseExtension(omni.ext.IExt):
             with ui.VStack(spacing=7):
                 self.info=ui.Label('Load Project to begin. Existing editor stays open.',word_wrap=True)
                 ui.Button('Open warehouse monitor',clicked_fn=self.dashboard.show)
+                ui.Button('Open Robot Camera',clicked_fn=self.open_robot_camera)
                 ui.Button('Open pickup anomaly lab',clicked_fn=self.open_pickup_lab)
                 ui.Button('Load Project',clicked_fn=self.load)
                 ui.Button('Load three-engine scenario',clicked_fn=self.load_multi)
@@ -55,6 +56,12 @@ class WarehouseExtension(omni.ext.IExt):
                 ui.Label('Simulated vision and kinematic grasp. Stop resets the full demo.',word_wrap=True)
         self.update_sub=omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.update,name='engine.warehouse.update')
         self.timeline_sub=self.timeline.get_timeline_event_stream().create_subscription_to_pop(self.timeline_event,name='engine.warehouse.timeline')
+
+    def open_robot_camera(self):
+        if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
+        from wrist_camera import open_view
+        if getattr(self,'robot_view',None):self.robot_view.destroy()
+        self.robot_view=open_view()
 
     def open_pickup_lab(self):
         if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
@@ -190,6 +197,7 @@ class WarehouseExtension(omni.ext.IExt):
         if self.process and self.process.poll() is None:self.process.terminate()
         self.detach()
         self.dashboard.close()
+        if getattr(self,'robot_view',None):self.robot_view.destroy();self.robot_view=None
         if getattr(self,'pickup_lab',None):self.pickup_lab.close()
         if self.window:self.window.destroy();self.window=None
         _instance=None

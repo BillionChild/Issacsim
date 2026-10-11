@@ -23,6 +23,8 @@ class StorageScene:
             path+=f'/J{i}'
             self.joints.append(stage.GetPrimAtPath(path).GetAttribute('xformOp:rotate'+axis))
         self.tool_path=path+'/EngineJig'
+        from wrist_camera import attach
+        attach(stage)
         self.jaws=[next(o for o in UsdGeom.Xformable(stage.GetPrimAtPath(self.tool_path+'/'+name)).GetOrderedXformOps() if o.GetOpType()==UsdGeom.XformOp.TypeTranslate) for name in ('Left','Right')]
         self.phase=stage.GetDefaultPrim().CreateAttribute('demo:phase',Sdf.ValueTypeNames.String)
         self.owner=stage.GetDefaultPrim().CreateAttribute('demo:payloadOwner',Sdf.ValueTypeNames.String)

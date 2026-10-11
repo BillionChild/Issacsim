@@ -16,12 +16,19 @@ class PickupLab:
         self.window=ui.Window('Pickup anomaly lab',width=400,height=510)
         with self.window.frame:
             with ui.VStack(spacing=5):
-                ui.Label('Observation only | robot disabled',height=24)
+                ui.Label('1. INJECT -> 2. OBSERVE -> 3. ESTIMATE -> 4. CORRECT -> 5. VERIFY',height=35,word_wrap=True)
+                ui.Label('Current stage: OBSERVE | estimation / correction not connected',height=32,word_wrap=True)
+                ui.Button('Open Robot Camera',clicked_fn=self.open_robot_camera)
                 ui.Button('Load pickup test scene',clicked_fn=self.load)
                 for name in CASES:
                     ui.Button(name,clicked_fn=lambda n=name:self.select(n))
                 ui.Button('Capture RGB + depth',clicked_fn=self.capture)
                 self.status=ui.Label('Load the test scene first.',word_wrap=True)
+    def open_robot_camera(self):
+        from wrist_camera import open_view
+        if getattr(self,'robot_view',None):self.robot_view.destroy()
+        self.robot_view=open_view()
+
     def load(self):
         if self.task and not self.task.done():return
         omni.kit.window.file.prompt_if_unsaved_stage(lambda:self.start(self.load_async()))
@@ -83,6 +90,7 @@ class PickupLab:
     def close(self):
         if self.task and not self.task.done():self.task.cancel()
         self.release();self.window.destroy()
+        if getattr(self,'robot_view',None):self.robot_view.destroy();self.robot_view=None
 
 def show():
     global lab
