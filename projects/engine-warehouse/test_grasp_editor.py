@@ -1,4 +1,4 @@
-"""Exercise the same RGB -> contact -> cleanup path as the editor button."""
+"""Exercise RGB -> ideal clamp -> level lift -> reseat -> cleanup."""
 from isaacsim import SimulationApp
 app=SimulationApp({'headless':True})
 import asyncio
@@ -28,9 +28,15 @@ async def test():
         assert report is not None,lab.process.text
         print('EDITOR CONTACT RESULT',case,report,flush=True)
         assert report['success']==close,report
+        assert report['grasp_locked']==close,report
+        if close:
+            assert report['max_rotation_change_deg']<.25,report
+            assert report['max_xy_shift_m']<.003,report
+            assert report['reseat_error_m']<.005,report
         assert geometry_state(stage)==before,'Payload or robot transforms changed after cleanup'
         assert [a.Get() for a in joint_attributes(stage)]==joints,'Observation pose not restored'
         assert not stage.GetPrimAtPath('/World/ContactPhysics'),'Physics overlay leaked'
+        assert not stage.GetPrimAtPath('/World/IdealPinClampLock'),'Clamp joint leaked'
         reports.append(report)
     lab.close()
     print('GRASP EDITOR PASS',flush=True)

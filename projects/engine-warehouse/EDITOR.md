@@ -194,33 +194,40 @@ stop the sequence. If interrupted, reload the test scene before retrying.
 Reports: outputs/pickup-corrections/*.json. UI phases: PLAN, CHECK, CORRECT,
 VERIFY, RETURN, PREGRASP VERIFIED. Rejected observations cause no motion.
 
-## Contact grasp experiment (stage 4)
+## Fixture-assisted level pickup (stage 4)
 
 In Pickup anomaly lab, load the test scene, select a case, then press
-**Verify contact grasp (lift / hold / release)**. A fresh wrist RGB estimate
+**Verify level pickup (clamp / lift / reseat)**. A fresh wrist RGB estimate
 drives the full approach. Rejected or masked observations produce HOLD.
 The robot closes its jaws, commands a 200 mm lift, holds for two simulated
-seconds, and opens the jaws. The display reports measured engine lift,
-hold drift, and release drop. Success requires lift >150 mm, hold drift
-<10 mm, and release drop >100 mm. Afterward the temporary test layer is
+seconds, lowers to its original seat, then opens the jaws. An ideal fixed
+joint models the engaged locating pins and clamp. It captures the engine's
+existing relative pose at closure, without snapping it into alignment.
+Success requires lift >190 mm, hold drift <3 mm, maximum orientation change
+<0.25 degrees, horizontal drift <3 mm and reseat error <5 mm. Orientation
+and drift are sampled throughout closure, lift, hold and lowering, not just
+after the engine has already settled tilted. Afterward the temporary test layer is
 removed and the observation pose is restored. No editor restart or Play
 is needed. Reports: outputs/pickup-grasps/*.json.
 
 This is a separate contact experiment, not a conversion of warehouse
 playback to physical control. The engine uses a convex collision envelope
 and a normalized 1 kg test mass; jaws follow kinematic trajectories. The
-production locating fixture is abstracted as an initial world lock,
-released before lift. There is no payload-to-gripper joint or scripted
-engine following. Pin-hole seating, real engine mass, actuator force,
+production locating fixture is abstracted as an initial world lock. It
+hands over to the gripper fixed joint before lift, and takes over again
+after reseating before jaw opening. This is ideal fixture-assisted motion,
+not evidence of friction-only grasp success. Pin-hole seating, real engine mass, actuator force,
 structural capacity and real-world grasp reliability are not validated.
-The negative control leaves jaws open and must fail the lift criterion.
-Release is deliberately tested over the pickup pallet, not over a rack.
+The negative control leaves jaws open, never engages the gripper joint,
+and leaves the engine on its pallet. It must fail the lift criterion.
+The previous deliberate drop test has been replaced by reseating.
 
 If the new button is missing, reopen the lab after reloading its Python
 module in Script Editor:
 
 ```python
-import importlib, pickup_capture_editor
+import importlib, grasp_contact, pickup_capture_editor
+importlib.reload(grasp_contact)
 importlib.reload(pickup_capture_editor).show()
 ```
 

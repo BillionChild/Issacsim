@@ -24,7 +24,7 @@ class PickupLab:
                     ui.Button(name,clicked_fn=lambda n=name:self.select(n))
                 ui.Button('Estimate from wrist RGB',clicked_fn=self.estimate)
                 ui.Button('Run vision-guided approach',clicked_fn=self.correct)
-                ui.Button('Verify contact grasp (lift / hold / release)',clicked_fn=self.grasp)
+                ui.Button('Verify level pickup (clamp / lift / reseat)',clicked_fn=self.grasp)
                 ui.Button('Capture RGB + depth',clicked_fn=self.capture)
                 self.status=ui.Label('Load the test scene first.',word_wrap=True)
     def open_robot_camera(self):
@@ -187,7 +187,7 @@ class PickupLab:
                 if UsdGeom.Xformable(source).ComputeLocalToWorldTransform(0)!=source_matrix:
                     raise RuntimeError('Pickup frame changed; contact test stopped')
                 if phase!=phase_old:
-                    self.correction_status('CONTACT TEST: '+phase+' | simulated payload; fixture unlocks before lift')
+                    self.correction_status('FIXTURE-ASSISTED PICKUP: '+phase+' | ideal pin/clamp lock')
                     phase_old=phase
                 phys.update_simulation(trial.dt,trial.time)
                 phys.update_transformations(False,True)
@@ -198,8 +198,8 @@ class PickupLab:
             report=trial.report();report['estimated_pose']=result['pose'];report['closed_jaws']=close
             out=ROOT/'outputs/pickup-grasps';out.mkdir(exist_ok=True)
             (out/(str(time.time_ns())+'.json')).write_text(json.dumps(report,indent=2))
-            state='CONTACT GRASP VERIFIED' if report['success'] else 'GRASP FAILED / HOLD'
-            self.correction_status(f"{state} | lift {report['lift_m']*1000:.1f} mm | hold slip {report['hold_slip_m']*1000:.2f} mm | release drop {report['release_drop_m']*1000:.1f} mm. Test scene resets.")
+            state='LEVEL PICKUP VERIFIED (IDEAL CLAMP)' if report['success'] else 'GRASP FAILED / HOLD'
+            self.correction_status(f"{state} | lift {report['lift_m']*1000:.1f} mm | max rotation {report['max_rotation_change_deg']:.3f} deg | reseat error {report['reseat_error_m']*1000:.2f} mm. Test scene resets.")
             return report
         except Exception as e:
             self.correction_status('HOLD: '+str(e));return None
