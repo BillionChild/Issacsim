@@ -24,6 +24,7 @@ class PickupLab:
                     ui.Button(name,clicked_fn=lambda n=name:self.select(n))
                 ui.Button('Estimate from wrist RGB',clicked_fn=self.estimate)
                 ui.Button('Run vision-guided approach',clicked_fn=self.correct)
+                ui.Button('Verify contact grasp (lift / hold / release)',clicked_fn=self.grasp)
                 ui.Button('Capture RGB + depth',clicked_fn=self.capture)
                 self.status=ui.Label('Load the test scene first.',word_wrap=True)
     def open_robot_camera(self):
@@ -44,6 +45,8 @@ class PickupLab:
     async def load_async(self):
         try:
             omni.timeline.get_timeline_interface().stop();self.release()
+            # Detach the generated layer before rebuilding it on repeated loads.
+            await omni.usd.get_context().new_stage_async()
             build()
             ok=await omni.usd.get_context().open_stage_async(str(OUTPUT))
             if isinstance(ok,tuple) and not ok[0]:raise RuntimeError(str(ok))
@@ -148,6 +151,64 @@ class PickupLab:
     def correction_status(self,text):
         self.process.text=text
         if getattr(self,'evidence_status',None):self.evidence_status.text=text
+
+    def grasp(self):
+        if self.task and not self.task.done():return
+        self.start(self.grasp_async())
+
+    async def grasp_async(self,close=True,playback_scale=1.):
+        result=await self.estimate_async()
+        if not result or not result['accepted']:return None
+        from grasp_contact import ContactTrial
+        from pickup_correction import plan,clearance
+        from pxr import Sdf,Usd,UsdGeom
+        import omni.physx
+        import omni.kit.app
+        phys=omni.physx.get_physx_interface()
+        stage=self.stage;layer=None;started=False;old_target=stage.GetEditTarget()
+        source=stage.GetPrimAtPath('/World/TestLoad')
+        source_matrix=UsdGeom.Xformable(source).ComputeLocalToWorldTransform(0)
+        try:
+            self.correction_status('CHECK: full contact approach clearance...')
+            await omni.kit.app.get_app().next_update_async()
+            frames,_,_=plan(result,standoff=0.)
+            clearance(stage,frames)
+            # Physics edits and transform writes stay in a disposable session layer.
+            layer=Sdf.Layer.CreateAnonymous('contact-trial.usda')
+            stage.GetSessionLayer().subLayerPaths.append(layer.identifier)
+            stage.SetEditTarget(Usd.EditTarget(layer))
+            phys.set_simulation_layer(layer.identifier)
+            trial=ContactTrial(stage,result)
+            for _ in range(4):await omni.kit.app.get_app().next_update_async()
+            phys.start_simulation();started=True
+            wall_start=time.monotonic();phase_old=''
+            for phase in trial.steps(close):
+                if omni.usd.get_context().get_stage()!=stage:raise RuntimeError('Stage changed; contact test stopped')
+                if UsdGeom.Xformable(source).ComputeLocalToWorldTransform(0)!=source_matrix:
+                    raise RuntimeError('Pickup frame changed; contact test stopped')
+                if phase!=phase_old:
+                    self.correction_status('CONTACT TEST: '+phase+' | simulated payload; fixture unlocks before lift')
+                    phase_old=phase
+                phys.update_simulation(trial.dt,trial.time)
+                phys.update_transformations(False,True)
+                trial.time+=trial.dt
+                while time.monotonic()-wall_start<trial.time*playback_scale:
+                    await omni.kit.app.get_app().next_update_async()
+                if round(trial.time/trial.dt)%12==0:await omni.kit.app.get_app().next_update_async()
+            report=trial.report();report['estimated_pose']=result['pose'];report['closed_jaws']=close
+            out=ROOT/'outputs/pickup-grasps';out.mkdir(exist_ok=True)
+            (out/(str(time.time_ns())+'.json')).write_text(json.dumps(report,indent=2))
+            state='CONTACT GRASP VERIFIED' if report['success'] else 'GRASP FAILED / HOLD'
+            self.correction_status(f"{state} | lift {report['lift_m']*1000:.1f} mm | hold slip {report['hold_slip_m']*1000:.2f} mm | release drop {report['release_drop_m']*1000:.1f} mm. Test scene resets.")
+            return report
+        except Exception as e:
+            self.correction_status('HOLD: '+str(e));return None
+        finally:
+            if started:phys.reset_simulation()
+            phys.set_simulation_layer(stage.GetRootLayer().identifier)
+            stage.SetEditTarget(old_target)
+            if layer and layer.identifier in stage.GetSessionLayer().subLayerPaths:
+                stage.GetSessionLayer().subLayerPaths.remove(layer.identifier)
 
     async def correct_async(self,playback_scale=1.):
         # Every run captures a fresh observation. No saved estimates are replayed.

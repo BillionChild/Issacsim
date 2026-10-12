@@ -2,15 +2,15 @@
 from fanuc_kinematics import np,ik,fk,LOW,HIGH
 from u_storage import IDLE
 
-STANDOFF=.35  # Stop above contact; wrist bracket has not been validated for grasp descent.
+STANDOFF=.35  # Default approach stops above contact; contact lab explicitly requests zero.
 
-def plan(result):
+def plan(result,standoff=STANDOFF):
     pose=np.asarray(result.get('pose',[]),dtype=float)
     if not result.get('accepted') or pose.shape!=(3,) or not np.isfinite(pose).all():
         raise ValueError('HOLD: fresh accepted estimate required')
     if np.any(np.abs(pose)>[40,25,3]):raise ValueError('HOLD: correction exceeds training envelope')
     dx,dy,angle=pose;theta=np.radians(angle)
-    target=np.array([dx/1000+.43*np.cos(theta),-2.2+dy/1000+.43*np.sin(theta),1.35+STANDOFF])
+    target=np.array([dx/1000+.43*np.cos(theta),-2.2+dy/1000+.43*np.sin(theta),1.35+standoff])
     q=IDLE.copy();frames=[(0.,q.copy())];start,_=fk(q,(0,0,0))
     for end,y0,y1 in ((np.array([target[0],target[1],2.35]),180,180+angle),(target,180+angle,180+angle)):
         origin=start.copy()

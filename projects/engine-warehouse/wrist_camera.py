@@ -16,7 +16,8 @@ def attach(stage):
     cam.CreateHorizontalApertureAttr(20.955);cam.CreateVerticalApertureAttr(20.955)
     cam.CreateClippingRangeAttr(Gf.Vec2f(.02,20.))
     for name,pos,size,color in (
-        ('CameraBracket',(.43,.375,-.25),(.04,.75,.04),(.3,.3,.32)),
+        ('CameraBracket',(.43,.375,.12),(.04,.75,.04),(.3,.3,.32)),
+        ('CameraOuterDrop',(.43,.75,-.06),(.04,.04,.36),(.3,.3,.32)),
         ('CameraHousing',(.43,.75,-.24),(.09,.08,.06),(.04,.04,.05))):
         cube=UsdGeom.Cube.Define(stage,TOOL+'/'+name)
         cube.CreateSizeAttr(1);cube.AddTranslateOp().Set(Gf.Vec3d(*pos))
