@@ -14,7 +14,7 @@ class MultiRuntime:
         self.session_id=stage.GetSessionLayer().identifier
         stage.GetSessionLayer().subLayerPaths.insert(0,self.layer.identifier)
         try:
-            self.model=MultiCycle({(kind,cell):load_motion(kind,cell) for kind in ('inbound','outbound') for cell in ('A','B')},empty_pallet_route=True)
+            self.model=MultiCycle({(kind,cell):load_motion(kind,cell) for kind in ('inbound','outbound') for cell in ('A','B')},empty_pallet_route=True,level_pickup=True)
             with Usd.EditContext(stage,self.layer):self.adapter=MultiScene(stage)
             self.reset()
         except Exception:self.close();raise
@@ -23,7 +23,7 @@ class MultiRuntime:
     @property
     def sim_seconds(self):return self.model.time
     def status(self):
-        owners=' | '.join(f"{k}: {v['owner']}" for k,v in self.model.engines.items())
+        owners=' | '.join(f"{k}: {v['owner']} ({v['clamp_status']})" for k,v in self.model.engines.items())
         return f'{self.model.phase}\n{owners}\nCells: {self.model.cells}'
     def apply(self):
         with Usd.EditContext(self.stage,self.layer):self.adapter.apply(self.model)
@@ -38,6 +38,7 @@ class MultiRuntime:
         with path.open('w',encoding='utf-8-sig',newline='') as f:
             writer=csv.DictWriter(f,fieldnames=['time','event','engine'],extrasaction='ignore');writer.writeheader();writer.writerows(self.model.events)
         (folder/'multi-engine-performance.json').write_text(json.dumps(self.performance,indent=2))
+        (folder/'multi-engine-pickup-checks.json').write_text(json.dumps(self.model.pickup_checks,indent=2))
         return path
     def close(self):
         session=Sdf.Layer.Find(self.session_id)

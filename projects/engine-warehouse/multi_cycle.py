@@ -14,9 +14,10 @@ class MultiCycle:
     SPEED = .4
     SHIP_Y = {'E1': 5.4, 'E3': 4.1, 'E2': 2.8}
 
-    def __init__(self, motions, empty_pallet_route=False):
+    def __init__(self, motions, empty_pallet_route=False, level_pickup=False):
         self.motions = motions
         self.empty_pallet_route = empty_pallet_route
+        self.level_pickup=level_pickup
         for kind in ('inbound', 'outbound'):
             for cell in ('A', 'B'):
                 frames = motions[kind, cell]
@@ -26,13 +27,14 @@ class MultiCycle:
         self.reset()
 
     def reset(self):
+        self.clamp=None;self.fault=None;self.pickup_checks=[]
         self.requests = []; self.ship_targets = {}
         self.time = 0.; self.events = []; self.cells = {'A': None, 'B': None}
         self.engines = {}
         for i, script in enumerate((('OK',), ('FAIL','OK'), ('OK',)), 1):
             cycle = ULoopCycle(script)
             self.engines[f'E{i}'] = dict(cycle=cycle, owner='pallet', cell=None,
-                position=cycle.position, yaw=0., pallet_position=cycle.position, pallet_visible=i==1, visible=i==1)
+                position=cycle.position, yaw=0., pallet_position=cycle.position, pallet_visible=i==1, visible=i==1,clamp_status='OPEN')
         self.carriers = {f'C{i+1}': dict(position=(2.5+i*1.3,0.,.7), engine=None,gate_open=0.) for i in range(4)}
         self.robot_frame = self.motions['inbound','A'][0]
         self.phase = 'E1_INFEED'; self.done = False; self.active = None
@@ -116,12 +118,37 @@ class MultiCycle:
             t.step(dt)
             if kind=='inbound' or t.state in ('TRANSFER','CLOSING','DISPATCH','DONE'):
                 f=t.sample() if kind=='inbound' else t.motion.sample()
-                self.robot_frame=f;owner='carrier' if f.owner=='outbound' else f.owner
+                owner='carrier' if f.owner=='outbound' else f.owner
+                carried=None
+                if self.level_pickup and kind=='inbound':
+                    try:
+                        if owner=='gripper' and e['owner']=='pallet':
+                            from level_clamp import LevelClamp
+                            closed=next(v for v in t.frames if v.owner=='gripper')
+                            self.clamp=LevelClamp(e['position'],e['yaw'],closed)
+                            e['clamp_status']='LOCKED';self._event('PIN_CLAMP_LOCKED',eid)
+                        if owner=='gripper':
+                            carried=self.clamp.sample(f)
+                        elif owner=='cell' and e['owner']=='gripper':
+                            # Validate the closed-jaw handover boundary, before interpolation
+                            # into OPEN_JAWS can introduce a small opening on this tick.
+                            seated=next(v for v in t.frames if v.owner=='cell')
+                            position,yaw,error=self.clamp.seat(seated)
+                            carried=(position,yaw)
+                            self.pickup_checks.append(dict(engine=eid,cell=cell,max_tilt_deg=self.clamp.max_tilt,seat_error_m=error,scope='ideal kinematic pin/clamp; not contact-force validation'))
+                            self._event('LEVEL_PICKUP_VERIFIED',eid)
+                            self.clamp=None;e['clamp_status']='SEATED_RELEASED'
+                            self._event('PIN_CLAMP_RELEASED',eid)
+                    except ValueError as exc:
+                        self.fault=str(exc);self.phase='HOLD: '+self.fault
+                        self._event('PICKUP_HOLD',eid);return
+                self.robot_frame=f
                 if e['owner']=='pallet' and owner!='pallet' and self.empty_pallet_route:
                     self.empty_routes[eid]=[(2.5,-2.2,.7),(2.5,-3.6,.7),(1.3,-3.6,.7),(-2.5,-3.6,.7),(-4.5,-3.6,.7)]
                 e['owner']=owner
                 e['position']=e['pallet_position'] if owner=='pallet' else tuple(float(v) for v in f.payload)
                 e['yaw']=float(f.yaw)
+                if carried:e['position'],e['yaw']=carried
                 if owner=='cell':
                     e['cell']=cell;self.cells[cell]=eid
                     if ('STORED',eid) not in self._seen:
@@ -181,5 +208,5 @@ class MultiCycle:
 
     def step(self, dt):
         if not math.isfinite(dt) or dt<0:raise ValueError('dt must be finite and nonnegative')
-        while dt>1e-12 and not self.done:
+        while dt>1e-12 and not self.done and not self.fault:
             used=min(dt,1/60);self._tick(used);dt-=used

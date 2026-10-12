@@ -36,6 +36,10 @@ load, grip force, pin-hole seating, unseen conditions or production safety.
 The camera position/lens are unchanged; its approved bracket is raised to
 clear the contact approach. Reproduction and button instructions: EDITOR.md.
 
-Next independent project stage: connect verified pickup to warehouse recovery
-and add re-observation/retry policy. No automatic retry or rack placement is
-claimed by this contact test.
+Warehouse integration: MultiRuntime now enables an ideal kinematic clamp
+for inbound transfers. It captures the relative pose at jaw closure, checks
+level transport (planned Z rotation permitted), verifies seating before
+handover, and records per-engine results. Three-engine replay and an injected
+tilted trajectory are covered by test_multi_runtime.py (2 passed); existing
+scheduler tests also pass (6). Main warehouse playback has no live RGB input
+or dynamic contact proof. Re-observation/retry remains a separate future step.

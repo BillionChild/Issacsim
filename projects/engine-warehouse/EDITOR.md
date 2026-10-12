@@ -235,3 +235,20 @@ Integration check (Isaac Python):
 projects/engine-warehouse/test_grasp_editor.py. Covers masked HOLD, normal
 closed grasp, open-jaw negative control, combined X/Y/yaw offsets, and
 payload/robot restoration after each trial.
+
+## Warehouse inbound: ideal level clamp
+
+Engine Warehouse -> Load three-engine scenario -> Play. For a scene already
+loaded in this mode, Reload Code + Reset also loads the new inbound logic.
+The existing multi-engine playback remains kinematic. On jaw closure it
+captures the engine-to-tool relative pose, carries the engine with that ideal
+pin/clamp constraint (level roll/pitch; planned Z rotation allowed), checks
+the rack seat before releasing, and only then records STORED. This does not
+add live RGB perception to the main warehouse or prove physical pin contact.
+
+Tilt >0.25 degrees, premature opening, or rack-seat error >5 mm / >0.25 degrees
+produces HOLD before handover. Reset is required to resume after fixing a
+failed route. The status text includes the last inbound clamp state.
+Export timing / performance CSV also writes multi-engine-pickup-checks.json
+under outputs, with per-engine tilt and seating error. Events include
+PIN_CLAMP_LOCKED, LEVEL_PICKUP_VERIFIED, PIN_CLAMP_RELEASED and PICKUP_HOLD.
