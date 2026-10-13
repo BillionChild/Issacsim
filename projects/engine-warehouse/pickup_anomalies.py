@@ -7,18 +7,7 @@ FOLDER=ROOT/'external_assets/engines/caterham_duratec/usd'
 OUTPUT=FOLDER/'pickup_anomaly_preview.usda'
 CAMERA='/World/PickupCamera'
 # Metres/degrees: experimental perturbations, not robot correction limits.
-CASES={
-    'normal':(0.,0.,0.,False),
-    'stop_x':(.03,0.,0.,False),
-    'lateral_y':(0.,.015,0.,False),
-    'yaw':(0.,0.,2.,False),
-    'occluded':(0.,0.,0.,True),
-    'x_y':(.03,.015,0.,False),
-    'x_yaw':(.03,0.,2.,False),
-    'y_yaw':(0.,.015,2.,False),
-    'x_y_yaw':(.03,.015,2.,False),
-    'combined_occluded':(.03,.015,2.,True),
-}
+from warehouse_cases import CASES
 
 def build():
     s=Usd.Stage.CreateNew(str(OUTPUT)) if not OUTPUT.exists() else Usd.Stage.Open(str(OUTPUT))

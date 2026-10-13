@@ -20,6 +20,34 @@ Alternatively add `C:/IssacsimProject/Issacsim/exts` to the Extensions search pa
 
 ## Normal workflow
 
+### First-engine anomaly demonstration
+
+After loading the three-engine scenario and before Play, select a case in
+**First engine anomaly**, then click **Apply case**. Available cases:
+`normal`, X stop error (`stop_x`, 30 mm), Y offset (`lateral_y`, 15 mm),
+`yaw` (2 degrees), `occluded`, and combinations (`x_y`, `x_yaw`, `y_yaw`,
+`x_y_yaw`, `combined_occluded`). Stop / Reset is required to change cases.
+The selected case persists across Reset; normal is the initial default.
+
+The first engine/pallet acquires the offset smoothly near pickup. The wrist
+RGB estimate drives the approach; the estimator never receives the chosen
+case or injected pose. The engine remains at its actual pose until grasped.
+
+For masked images the robot enters HOLD. **Retry observation** captures again
+without clearing the fault. **Clear camera mask + retry** explicitly removes
+the simulated sensor obstruction and captures a new image at the same
+position. This is an operator/demo fault-clear action, not autonomous
+physical obstruction removal. On a trusted estimate, Play continues the
+corrected pickup and rack placement; after successful placement the vision
+state becomes VERIFIED. Force-contact validation remains out of scope.
+
+Warehouse inference uses `outputs/pickup-perception/warehouse-model.npz`,
+trained by `train_warehouse_perception.py` from the current warehouse scene.
+The separate pickup lab retains its own model. Generated weights are local
+artifacts; a fresh checkout must train them. Changed lighting/assets/camera
+require revalidation. Evidence and all retry observations are exported in
+`outputs/warehouse-vision/` and `outputs/multi-engine-vision.json`.
+
 Three-engine flow now overlaps independent conveyor work with the robot:
 after outbound placement and return to standby, gate closure/departure no
 longer blocks the next inbound. The monitor shows **CONVEYOR_DISPATCH** until

@@ -28,7 +28,7 @@ class MultiRuntime:
     def sim_seconds(self):return self.model.time
     def status(self):
         owners=' | '.join(f"{k}: {v['owner']} ({v['clamp_status']})" for k,v in self.model.engines.items())
-        return f'{self.model.phase} | Robot: {self.model.robot_frame.phase} | Vision: {self.model.vision_state}\n{self.model.fault or self.vision_message}\n{owners}\nDispatching: {list(self.model.dispatches)} | Cells: {self.model.cells}'
+        return f'Case: {self.model.pickup_case} | {self.model.phase} | Robot: {self.model.robot_frame.phase} | Vision: {self.model.vision_state}\n{self.model.fault or self.vision_message}\n{owners}\nDispatching: {list(self.model.dispatches)} | Cells: {self.model.cells}'
     def apply(self):
         with Usd.EditContext(self.stage,self.layer):self.adapter.apply(self.model)
     def tick(self,dt,wall_dt=None):
@@ -44,9 +44,10 @@ class MultiRuntime:
         from guided_inbound import build_guided
         generation=self.generation
         try:
-            result=await observe(self.stage,lambda:self.generation==generation)
+            result=await observe(self.stage,lambda:self.generation==generation,self.model.sensor_occluded)
             if self.generation!=generation:return
             self.model.vision_result=result
+            self.model.observations.append(result)
             if not result['accepted']:raise ValueError(result['reason'])
             self.vision_message='ESTIMATE: X %.1f mm, Y %.1f mm, yaw %.2f deg'%tuple(result['pose'])
             self.model._event('VISION_ESTIMATED','E1')
@@ -62,7 +63,7 @@ class MultiRuntime:
         with path.open('w',encoding='utf-8-sig',newline='') as f:
             writer=csv.DictWriter(f,fieldnames=['time','event','engine'],extrasaction='ignore');writer.writeheader();writer.writerows(self.model.events)
         (folder/'multi-engine-performance.json').write_text(json.dumps(self.performance,indent=2))
-        (folder/'multi-engine-vision.json').write_text(json.dumps(dict(state=self.model.vision_state,result=self.model.vision_result,fault=self.model.fault),indent=2))
+        (folder/'multi-engine-vision.json').write_text(json.dumps(dict(case=self.model.pickup_case,state=self.model.vision_state,result=self.model.vision_result,observations=self.model.observations,fault=self.model.fault),indent=2))
         (folder/'multi-engine-pickup-checks.json').write_text(json.dumps(self.model.pickup_checks,indent=2))
         return path
     def close(self):

@@ -8,6 +8,7 @@ import math
 from u_loop_cycle import ULoopCycle
 from u_storage import StorageTransfer
 from outbound_cycle import OutboundCycle
+from warehouse_cases import CASES
 
 
 class MultiCycle:
@@ -24,25 +25,50 @@ class MultiCycle:
                 frames = motions[kind, cell]
                 if not frames or frames[0].time != 0 or any(b.time <= a.time for a,b in zip(frames, frames[1:])):
                     raise ValueError('Motion frames must start at zero and increase strictly')
+        self.pickup_case="normal"
         self.manual = False
         self.reset()
 
     def reset(self):
         self.clamp=None;self.fault=None;self.pickup_checks=[]
         self.vision_state="WAITING";self.vision_result=None;self.guided_frames=None
+        self.sensor_occluded=CASES[self.pickup_case][3];self.observations=[]
         self.requests = []; self.ship_targets = {}; self.dispatches = {}
         self.time = 0.; self.events = []; self.cells = {'A': None, 'B': None}
         self.engines = {}
         for i, script in enumerate((('OK',), ('FAIL','OK'), ('OK',)), 1):
             cycle = ULoopCycle(script)
             self.engines[f'E{i}'] = dict(cycle=cycle, owner='pallet', cell=None,
-                position=cycle.position, yaw=0., pallet_position=cycle.position, pallet_visible=i==1, visible=i==1,clamp_status='OPEN')
+                position=cycle.position, yaw=0., pallet_yaw=0., pallet_position=cycle.position, pallet_visible=i==1, visible=i==1,clamp_status='OPEN')
         self.carriers = {f'C{i+1}': dict(position=(2.5+i*1.3,0.,.7), engine=None,gate_open=0.) for i in range(4)}
         self.robot_frame = self.motions['inbound','A'][0]
         self.phase = 'E1_INFEED'; self.done = False; self.active = None
         self.stage = 0; self.shipped = []; self.empty_routes = {}; self._seen = set()
         self.engines['E1']['cycle'].start()
         self._event('SCENE_ENTRY','E1')
+
+    def configure_case(self,name):
+        if name not in CASES:raise ValueError('Unknown pickup case')
+        if self.time!=0 or self.active:raise ValueError('Stop / Reset before choosing a case')
+        if name!='normal' and not self.vision_required:raise ValueError('Anomaly cases require the vision gate')
+        self.pickup_case=name;self.sensor_occluded=CASES[name][3]
+
+    def retry_observation(self,clear_sensor=False):
+        if self.vision_state!='HOLD' or self.active or not self.engines['E1']['cycle'].pickup_allowed:return False
+        if clear_sensor:self.sensor_occluded=False
+        self.fault=None;self.guided_frames=None;self.vision_result=None
+        self.vision_state='OBSERVE';self.phase='E1_VISION_REOBSERVE'
+        self._event('VISION_REOBSERVE','E1');return True
+
+    def _pallet_pose(self,eid,e):
+        cycle=e['cycle'];dx=dy=yaw=0.
+        if eid=='E1' and cycle.state in ('TO_PICKUP','READY_PICKUP'):
+            progress=max(0.,min(1.,1.-math.dist(cycle.position,cycle.PICKUP)/.4))
+            blend=progress*progress*(3-2*progress)
+            x,y,angle,_=CASES[self.pickup_case];dx=x*blend;dy=y*blend;yaw=angle*blend
+        x,y,z=cycle.position
+        e['position']=e['pallet_position']=(x+dx,y+dy,z)
+        e['yaw']=e['pallet_yaw']=yaw
 
     def set_manual(self, manual):
         # Mode changes are only accepted before playback / after Reset.
@@ -133,7 +159,7 @@ class MultiCycle:
         for eid,e in self.engines.items():
             if e['owner']=='pallet':
                 c=e['cycle']; old=c.state;c.step(dt)
-                e['position']=c.position;e['pallet_position']=c.position
+                self._pallet_pose(eid,e)
                 if c.state != old and c.state in ('WAIT_REWORK','TO_PICKUP'):
                     self._event('WAIT_REWORK' if c.state=='WAIT_REWORK' else 'INSPECTION_OK',eid)
         self._dispatch_step(dt)
@@ -161,6 +187,7 @@ class MultiCycle:
                             carried=(position,yaw)
                             self.pickup_checks.append(dict(engine=eid,cell=cell,max_tilt_deg=self.clamp.max_tilt,seat_error_m=error,scope='ideal kinematic pin/clamp; not contact-force validation'))
                             self._event('LEVEL_PICKUP_VERIFIED',eid)
+                            if eid=='E1' and self.vision_required:self.vision_state='VERIFIED'
                             self.clamp=None;e['clamp_status']='SEATED_RELEASED'
                             self._event('PIN_CLAMP_RELEASED',eid)
                     except ValueError as exc:
@@ -171,7 +198,7 @@ class MultiCycle:
                     self.empty_routes[eid]=[(2.5,-2.2,.7),(2.5,-3.6,.7),(1.3,-3.6,.7),(-2.5,-3.6,.7),(-4.5,-3.6,.7)]
                 e['owner']=owner
                 e['position']=e['pallet_position'] if owner=='pallet' else tuple(float(v) for v in f.payload)
-                e['yaw']=float(f.yaw)
+                if owner!='pallet':e['yaw']=float(f.yaw)
                 if carried:e['position'],e['yaw']=carried
                 if owner=='cell':
                     e['cell']=cell;self.cells[cell]=eid

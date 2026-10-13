@@ -3,14 +3,16 @@ import time,json
 from pathlib import Path
 
 
-async def observe(stage,current):
+async def observe(stage,current,occluded=False):
     import omni.usd
     import omni.replicator.core as rep
     from pxr import UsdGeom
     from fanuc_kinematics import np
     from wrist_camera import CAMERA
     from pickup_perception import Predictor,annotated
-    predictor=Predictor()
+    model=Path(__file__).resolve().parents[2]/'outputs/pickup-perception/warehouse-model.npz'
+    if not model.exists():raise RuntimeError('Warehouse model missing: run train_warehouse_perception.py')
+    predictor=Predictor(model)
     def guard():
         if not current() or omni.usd.get_context().get_stage()!=stage:raise RuntimeError('Observation cancelled: stage or runtime changed')
         matrix=np.array(UsdGeom.Xformable(stage.GetPrimAtPath(CAMERA)).ComputeLocalToWorldTransform(0).GetInverse())
@@ -23,6 +25,8 @@ async def observe(stage,current):
             await rep.orchestrator.step_async(rt_subframes=4,pause_timeline=False)
             guard()
         rgb=np.asarray(annotator.get_data()).copy()
+        from warehouse_cases import sensor_image
+        rgb=sensor_image(rgb,occluded)
         result=predictor.predict(rgb)
         folder=Path(__file__).resolve().parents[2]/'outputs/warehouse-vision';folder.mkdir(exist_ok=True)
         path=folder/(str(time.time_ns())+'.png')

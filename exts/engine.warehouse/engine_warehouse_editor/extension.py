@@ -26,7 +26,10 @@ class WarehouseExtension(omni.ext.IExt):
         self.runtime=None;self.busy=False;self.task=None;self.process=None;self.multi=False
         self.context=omni.usd.get_context();self.timeline=omni.timeline.get_timeline_interface()
         self.dashboard=Dashboard()
-        self.window=ui.Window('Engine Warehouse',width=450,height=430)
+        if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
+        from warehouse_cases import CASES
+        self.case_names=list(CASES)
+        self.window=ui.Window('Engine Warehouse',width=500,height=590)
         with self.window.frame:
             with ui.VStack(spacing=7):
                 self.info=ui.Label('Load Project to begin. Existing editor stays open.',word_wrap=True)
@@ -35,6 +38,13 @@ class WarehouseExtension(omni.ext.IExt):
                 ui.Button('Open pickup anomaly lab',clicked_fn=self.open_pickup_lab)
                 ui.Button('Load Project',clicked_fn=self.load)
                 ui.Button('Load three-engine scenario',clicked_fn=self.load_multi)
+                ui.Label('First engine anomaly (choose after Stop / Reset)',height=20)
+                with ui.HStack(height=24):
+                    self.case_combo=ui.ComboBox(0,*self.case_names)
+                    ui.Button('Apply case',clicked_fn=self.apply_case)
+                with ui.HStack(height=24):
+                    ui.Button('Retry observation',clicked_fn=lambda:self.retry_vision(False))
+                    ui.Button('Clear camera mask + retry',clicked_fn=lambda:self.retry_vision(True))
                 with ui.HStack():
                     ui.Button('Play',clicked_fn=self.play)
                     ui.Button('Pause',clicked_fn=self.timeline.pause)
@@ -101,17 +111,33 @@ class WarehouseExtension(omni.ext.IExt):
             if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
             # Compile current source directly: no same-second .pyc cache surprises.
             self.multi=bool(self.context.get_stage().GetDefaultPrim().GetAttribute('demo:multiEngine').Get())
-            modules=MODULES+('build_multi_motion','level_clamp','pickup_perception','pickup_correction','guided_inbound','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
+            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','pickup_perception','pickup_correction','guided_inbound','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
             for name in modules:
                 file=PROJECT/(name+'.py');module=types.ModuleType(name);module.__file__=str(file)
                 sys.modules[name]=module
                 exec(compile(file.read_bytes(),str(file),'exec'),module.__dict__)
             self.runtime=sys.modules['multi_runtime'].MultiRuntime(self.context.get_stage(),vision_required=True) if self.multi else sys.modules['editor_runtime'].EditorRuntime(self.context.get_stage())
+            if self.multi:self.runtime.model.configure_case(self.case_names[self.case_combo.model.get_item_value_model().as_int])
             self.timeline.set_end_time(86400.)
             self.info.text='Ready. Play starts infeed; Stop resets. Reload keeps this editor open.'
         except Exception as e:
             self.info.text='Reload stopped: '+str(e)+' (rebuild motion if source changed)'
             print('WAREHOUSE RELOAD ERROR',repr(e),flush=True)
+
+    def apply_case(self):
+        if self.busy or not self.runtime or not self.multi:return
+        try:
+            name=self.case_names[self.case_combo.model.get_item_value_model().as_int]
+            self.runtime.model.configure_case(name)
+            self.info.text='First engine case: '+name+'. Play to run.'
+        except ValueError as exc:self.info.text=str(exc)
+
+    def retry_vision(self,clear_sensor):
+        if self.busy or not self.runtime or not self.multi:return
+        if self.runtime.model.retry_observation(clear_sensor):
+            self.info.text='Re-observing at pickup; no reset or pose correction from truth.'
+            self.timeline.play()
+        else:self.info.text='Retry is available only for a vision HOLD before pickup.'
 
     def set_speed(self,value):
         self.speed=value
@@ -171,7 +197,7 @@ class WarehouseExtension(omni.ext.IExt):
 
     async def observe_first_engine(self):
         runtime=self.runtime
-        self.busy=True;self.info.text='OBSERVE: first engine wrist RGB. Robot held at idle.'
+        self.busy=True;self.info.text='OBSERVE: '+runtime.model.pickup_case+' | wrist RGB; robot held at idle.'
         try:
             await runtime.observe_pickup()
             if self.runtime is not runtime:return

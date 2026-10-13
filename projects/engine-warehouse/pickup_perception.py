@@ -4,18 +4,25 @@ import numpy as np
 
 MODEL=Path(__file__).resolve().parents[2]/'outputs/pickup-perception/model.npz'
 
-def features(rgb):
+def features(rgb,side=64):
     from PIL import Image
     crop=np.asarray(rgb)[160:464,80:432,:3]
-    return np.asarray(Image.fromarray(crop.astype('uint8')).convert('L').resize((64,64)),dtype=float).ravel()/255.
+    return np.asarray(Image.fromarray(crop.astype('uint8')).convert('L').resize((side,side)),dtype=float).ravel()/255.
 
-def train(images,poses,path,calibration):
-    x=np.stack([features(im) for im in images]);y=np.asarray(poses)
+def train(images,poses,path,calibration,feature_side=64,kernel_sigma=None):
+    x=np.stack([features(im,feature_side) for im in images]);y=np.asarray(poses)
     mean=x.mean(0);ym=y.mean(0);xc=x-mean
+    if kernel_sigma is not None:
+        norms=np.sum(x*x,axis=1)
+        distances=np.maximum((norms[:,None]+norms[None,:]-2*x@x.T)/x.shape[1],0)
+        kernel=np.exp(-distances/(2*kernel_sigma**2))
+        alpha=np.linalg.solve(kernel+.01*np.eye(len(x)),y-ym)
+        np.savez_compressed(path,ym=ym,alpha=alpha,train=x,kernel_sigma=kernel_sigma,feature_side=feature_side,**calibration)
+        return
     # Dual ridge avoids a large pixel x pixel system. Labels: mm, mm, degrees.
     dual=np.linalg.solve(xc@xc.T+.03*np.eye(len(x)),y-ym)
     weights=xc.T@dual
-    np.savez_compressed(path,mean=mean,ym=ym,weights=weights,train=x,**calibration)
+    np.savez_compressed(path,mean=mean,ym=ym,weights=weights,train=x,feature_side=feature_side,**calibration)
 
 class Predictor:
     def __init__(self,path=MODEL):
@@ -25,9 +32,12 @@ class Predictor:
         if rgb.shape[:2]!=(512,512):raise ValueError('Expected calibrated 512x512 image')
         crop=rgb[160:464,80:432,:3]
         black=float(np.mean(np.max(crop,axis=2)<3))
-        x=features(rgb);d=self.data
-        novelty=float(np.sqrt(np.min(np.mean((d['train']-x)**2,axis=1))))
-        pose=(x-d['mean'])@d['weights']+d['ym']
+        d=self.data;x=features(rgb,int(d.get('feature_side',64)))
+        distances=np.mean((d['train']-x)**2,axis=1)
+        novelty=float(np.sqrt(np.min(distances)))
+        if 'kernel_sigma' in d:
+            pose=np.exp(-distances/(2*float(d['kernel_sigma'])**2))@d['alpha']+d['ym']
+        else:pose=(x-d['mean'])@d['weights']+d['ym']
         reason='ESTIMATE_ONLY'
         if black>.04:reason='HOLD: missing / dark image region'
         elif novelty>.075:reason='HOLD: image differs from training'

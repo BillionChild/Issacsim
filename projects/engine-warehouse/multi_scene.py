@@ -27,7 +27,7 @@ class MultiScene:
         for sign,op in zip((1,-1),self.robot.jaws):self.set(op,Gf.Vec3d(0,sign*model.robot_frame.opening,0))
         for name,e in model.engines.items():
             xyz,yaw,vis=self.engines[name];self.set(xyz,Gf.Vec3d(*e['position']));self.set(yaw,float(e['yaw']));self.set(vis,'inherited' if e.get('visible',True) else 'invisible')
-            xyz,yaw,vis=self.pallets[name];self.set(xyz,Gf.Vec3d(*e['pallet_position']));self.set(vis,'inherited' if e['pallet_visible'] else 'invisible')
+            xyz,yaw,vis=self.pallets[name];self.set(xyz,Gf.Vec3d(*e['pallet_position']));self.set(yaw,float(e['pallet_yaw']));self.set(vis,'inherited' if e['pallet_visible'] else 'invisible')
         for name,c in model.carriers.items():
             xyz,yaw,vis=self.carriers[name];self.set(xyz,Gf.Vec3d(*c['position']))
             rail=self.stage.GetPrimAtPath('/World/Carriers/'+name+'/SideRail0').GetAttribute('xformOp:translate')

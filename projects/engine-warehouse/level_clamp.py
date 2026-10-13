@@ -23,5 +23,5 @@ class LevelClamp:
         position,yaw=self.sample(frame)
         error=float(np.linalg.norm(np.asarray(position)-frame.payload))
         yaw_error=abs((yaw-frame.yaw+180)%360-180)
-        if error>.005 or yaw_error>.25:raise ValueError('Engine is not aligned with rack seat')
+        if error>.005 or yaw_error>.25:raise ValueError(f'Engine is not aligned with rack seat: {error*1000:.2f} mm, {yaw_error:.3f} deg')
         return position,yaw,error
