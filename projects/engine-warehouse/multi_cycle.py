@@ -30,7 +30,7 @@ class MultiCycle:
     def reset(self):
         self.clamp=None;self.fault=None;self.pickup_checks=[]
         self.vision_state="WAITING";self.vision_result=None;self.guided_frames=None
-        self.requests = []; self.ship_targets = {}
+        self.requests = []; self.ship_targets = {}; self.dispatches = {}
         self.time = 0.; self.events = []; self.cells = {'A': None, 'B': None}
         self.engines = {}
         for i, script in enumerate((('OK',), ('FAIL','OK'), ('OK',)), 1):
@@ -92,10 +92,27 @@ class MultiCycle:
         cell = self.engines[eid]['cell']
         transfer = OutboundCycle(self.motions['outbound',cell])
         if not transfer.start(self.cells[cell]==eid,True):return False
-        self.ship_targets[eid] = 5.4-1.3*len(self.shipped)
+        self.ship_targets[eid] = 5.4-1.3*len(self.ship_targets)
         self.active = ('outbound',eid,cell,transfer,cid)
         self._event('OUTBOUND_START',eid)
         return True
+
+    def _dispatch_step(self, dt):
+        # Completed robot transfers release the robot, not the carrier resource.
+        for eid,(cid,transfer,height) in list(self.dispatches.items()):
+            transfer.step(dt)
+            carrier=self.carriers[cid];carrier['gate_open']=transfer.gate_open
+            if transfer.state in ('DISPATCH','DONE'):
+                y=carrier['position'][1]
+                limit=self.ship_targets[eid]
+                for other_id,other in self.carriers.items():
+                    if other_id!=cid and other['engine'] is not None and other['position'][1]>y:
+                        limit=min(limit,other['position'][1]-1.3)
+                carrier['position']=(2.5,max(y,min(limit,y+self.SPEED*dt)),.7)
+            p=carrier['position'];self.engines[eid]['position']=(p[0],p[1],height)
+            if transfer.state=='DONE' and p[1]>=self.ship_targets[eid]-1e-9:
+                self.shipped.append(eid);self._event('OUTBOUND_DONE',eid)
+                del self.dispatches[eid]
 
     def _empty_step(self, dt):
         for eid, route in list(self.empty_routes.items()):
@@ -119,6 +136,7 @@ class MultiCycle:
                 e['position']=c.position;e['pallet_position']=c.position
                 if c.state != old and c.state in ('WAIT_REWORK','TO_PICKUP'):
                     self._event('WAIT_REWORK' if c.state=='WAIT_REWORK' else 'INSPECTION_OK',eid)
+        self._dispatch_step(dt)
         if self.active:
             kind,eid,cell,t,cid=self.active;e=self.engines[eid]
             t.step(dt)
@@ -164,17 +182,16 @@ class MultiCycle:
                 if owner=='carrier':self.carriers[cid]['engine']=eid
             if kind=='outbound':
                 carrier=self.carriers[cid];carrier['gate_open']=t.gate_open
-                if t.state in ('DISPATCH','DONE'):
-                    y=min(self.ship_targets[eid],carrier['position'][1]+self.SPEED*dt)
-                    carrier['position']=(2.5,y,.7)
                 if e['owner']=='carrier':
                     p=carrier['position']; e['position']=(p[0],p[1],float(self.motions['outbound',cell][-1].payload[2]))
-                finished=t.state=='DONE' and carrier['position'][1]>=self.ship_targets[eid]-1e-9
+                finished=t.motion.state=='DONE'
             else:finished=t.state=='DONE'
             self.phase=f'{eid}_{kind.upper()}_{t.state}'
             if finished:
-                self._event('ROBOT_READY' if kind=='inbound' else 'OUTBOUND_DONE',eid)
-                if kind=='outbound':self.shipped.append(eid)
+                self._event('ROBOT_READY',eid)
+                if kind=='outbound':
+                    self.dispatches[eid]=(cid,t,float(self.motions['outbound',cell][-1].payload[2]))
+                    self._event('OUTBOUND_CONVEYOR_HANDOFF',eid)
                 self.active=None
         # Empty feed carriers maintain their 1.3 m pitch; only advance after dispatch clears.
         moving=[v for v in self.carriers.values() if v['engine'] is not None and v['position'][1]<1.3-1e-9]
@@ -189,21 +206,21 @@ class MultiCycle:
             return
         e1,e2,e3=(self.engines[e] for e in ('E1','E2','E3'))
         if self.stage==0 and self._inbound('E1','A'):self.stage=1
-        elif self.stage==1 and not self.active:
+        elif self.stage==1 and e1['owner']=='cell':
             e2['visible']=True;e2['pallet_visible']=True
             e2['cycle'].start();self._event('SCENE_ENTRY','E2');self.stage=2;self.phase='E2_INFEED'
         elif self.stage==2 and e2['cycle'].state=='WAIT_REWORK':
             e3['visible']=True;e3['pallet_visible']=True
             e3['cycle'].start();self._event('SCENE_ENTRY','E3');self.stage=3;self.phase='E3_INFEED'
         elif self.stage==3 and self._inbound('E3','B'):self.stage=4
-        elif self.stage==4 and not self.active:
+        elif self.stage==4 and e3['owner']=='cell':
             e2['cycle'].complete_rework();self._event('REWORK_COMPLETE','E2');self.stage=5
         elif self.manual and self.stage>=5:self._manual_schedule()
-        elif self.stage==5 and e2['cycle'].state=='TO_PICKUP' and self._outbound('E1'):self.stage=6
-        elif self.stage==6 and 'E1' in self.shipped and self._inbound('E2','A'):self.stage=7
+        elif self.stage==5 and e2['cycle'].state in ('TO_PICKUP','READY_PICKUP') and self._outbound('E1'):self.stage=6
+        elif self.stage==6 and e1['owner']=='carrier' and self._inbound('E2','A'):self.stage=7
         elif self.stage==7 and not self.active and self._outbound('E3'):self.stage=8
-        elif self.stage==8 and 'E3' in self.shipped and self._outbound('E2'):self.stage=9
-        elif self.stage==9 and 'E2' in self.shipped:
+        elif self.stage==8 and e3['owner']=='carrier' and self._outbound('E2'):self.stage=9
+        elif self.stage==9 and len(self.shipped)==3 and not self.active:
             self.phase='EMPTY_PALLET_RETURN' if any(self.empty_routes.values()) else 'DONE'
             self.done=self.phase=='DONE'
 

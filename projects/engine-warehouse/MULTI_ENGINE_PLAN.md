@@ -1,7 +1,7 @@
 # Three-engine inbound/outbound scenario
 
 ## User-requested order
-E1 first-pass OK -> cell A. E2 FAIL -> manual-repair buffer. E3 first-pass OK -> cell B. After E3 storage, scripted repair completes; E2 returns through the same vision station and passes. While E2 travels from vision toward pickup, request E1 outbound. Finish E1 outbound before admitting E2 to cell A. Finally ship E3 then E2.
+E1 first-pass OK -> cell A. E2 FAIL -> manual-repair buffer. E3 first-pass OK -> cell B. After E3 storage, scripted repair completes; E2 returns through the same vision station and passes. When E2 travels toward pickup or is ready there, request E1 outbound as soon as the robot is free. After E1 is placed on its carrier and the robot returns clear, admit E2 to cell A while E1's conveyor departure continues. Finally ship E3 then E2.
 
 Use unique engine IDs and distinct pallet instances. Keep repaired E2 visible while E3 moves; never relabel one visible engine as another. Store cell occupancy by engine ID. One robot job at a time, cell/pickup/carrier reservations, departure only after robot-clear and gate-closed. No teleporting load between pallet/cell/carrier.
 
@@ -20,7 +20,16 @@ A/B are the existing right lower/upper cells (.6,3,.66)/( .6,3,1.66). Upper rout
 
 
 ## Implementation checkpoint
-Separate multi-engine scheduler, USD instances/runtime, east carrier feed/north buffer builder and editor mode implemented locally. Four scheduler tests, USD lifecycle test and headless editor integration passed. All four genuine IK routes are cached; B geometry checks passed with lower A occupied. Real replay model time ~491.33 s, shipments E1,E3,E2. Existing single-engine mode retained.
+Separate multi-engine scheduler, USD instances/runtime, east carrier feed/north buffer builder and editor mode implemented locally. All four genuine IK routes are cached; B geometry checks passed with lower A occupied. Original serial replay model time ~491.33 s, shipments E1,E3,E2. Existing single-engine mode retained.
+
+## Parallel flow update — 2026-10-13
+
+- Robot ownership ends at the completed return motion. Gate closure and loaded-carrier departure continue in independent dispatch jobs. OUTBOUND_DONE still means actual arrival at the outbound buffer, not merely robot release.
+- E2 infeed starts once E1 is stored, during E1 robot return. Scripted E2 repair completion starts once E3 is stored, during E3 return. These do not change repair duration realism; this remains a scripted demo.
+- E2 inbound no longer waits for E1 shipment completion. E2 outbound can begin before E3 finishes departing once the robot and an empty carrier at the loading position are available.
+- Departure waits for robot clearance and closed gate. Empty carriers wait for 1.3 m discharge clearance; moving loaded carriers retain 1.3 m spacing. Destination slots are reserved on order start, so concurrent departures cannot select the same slot.
+- Existing cached paths and speeds: 491.33 -> 437.42 model seconds (53.92 s / 10.97% reduction). E2 inbound starts at 230.85 s while E1 dispatch ends at 246.35 s. This comparison excludes camera capture/planning wall time and uses the nominal replay routes.
+- `test_multi_cycle.py` includes slow-conveyor spacing, unique destinations, concurrent robot release, and reset checks. `check_parallel_flow.py` samples the new robot/other-load interactions at 0.2 s; this is not continuous collision or physical validation. Local reports: `outputs/parallel-flow-timing.json`, `outputs/parallel-flow-geometry.json`.
 
 Empty inline pallet recovery approved on 2026-10-06 and added: existing loop -> left-end 2 m conveyor -> modeled upstream boundary at x=-4.5,y=-3.6. Empty pallets remain visible while returning, wait behind occupied pallets, then exit the modeled scene with an EMPTY_PALLET_EXIT event. No forklift handling is simulated beyond that boundary.
 

@@ -41,8 +41,9 @@ class MultiCycleTests(unittest.TestCase):
             self.assertEqual(model.carriers[cid]['gate_open'],0.)
         events=[(e['event'],e['engine']) for e in model.events]
         self.assertLess(events.index(('WAIT_REWORK','E2')),events.index(('STORED','E3')))
-        self.assertLess(events.index(('ROBOT_READY','E3')),events.index(('REWORK_COMPLETE','E2')))
-        self.assertLess(events.index(('OUTBOUND_DONE','E1')),events.index(('INBOUND_START','E2')))
+        self.assertLess(events.index(('STORED','E3')),events.index(('REWORK_COMPLETE','E2')))
+        self.assertLess(events.index(('REWORK_COMPLETE','E2')),events.index(('ROBOT_READY','E3')))
+        self.assertLess(events.index(('INBOUND_START','E2')),events.index(('OUTBOUND_DONE','E1')))
         first=list(model.events)
         model.reset();model.step(400)
         self.assertEqual(first,model.events)
@@ -115,12 +116,46 @@ class MultiCycleTests(unittest.TestCase):
         self.assertEqual([eid for eid,e in model.engines.items() if e['visible']],['E1'])
         self.assertEqual([eid for eid,e in model.engines.items() if e['pallet_visible']],['E1'])
 
+    def test_robot_released_while_carrier_still_dispatches(self):
+        model=MultiCycle(motions())
+        for _ in range(12000):
+            model.step(.05)
+            if model.active and model.active[:2]==('inbound','E2'):break
+        else:self.fail('Next inbound did not start')
+        self.assertIn('E1',model.dispatches)
+        self.assertNotIn('E1',model.shipped)
+        self.assertLess(model.carriers['C1']['position'][1],model.ship_targets['E1'])
+        model.step(2.2)
+        self.assertGreater(model.carriers['C1']['position'][1],0)
+        self.assertEqual(model.carriers['C1']['gate_open'],0)
+        self.assertEqual(model.engines['E1']['position'][:2],model.carriers['C1']['position'][:2])
+        model.reset()
+        self.assertEqual(model.dispatches,{})
+        self.assertEqual(model.ship_targets,{})
+        self.assertEqual(model.shipped,[])
+
+    def test_slow_departure_reserves_unique_slots_and_waits_for_empty_carrier(self):
+        model=MultiCycle(motions());model.SPEED=.08
+        for _ in range(18000):
+            model.step(.05)
+            targets=list(model.ship_targets.values())
+            self.assertEqual(len(targets),len(set(targets)))
+            carriers=list(model.carriers.values())
+            for i,a in enumerate(carriers):
+                for b in carriers[i+1:]:self.assertGreaterEqual(math.dist(a['position'],b['position']),1.3-1e-8)
+            if model.active and model.active[0]=='outbound':
+                self.assertEqual(model.carriers[model.active[4]]['position'],(2.5,0.,.7))
+            if model.done:break
+        self.assertTrue(model.done)
+        self.assertEqual(model.shipped,['E1','E3','E2'])
+        self.assertEqual(model.dispatches,{})
+
     def test_request_e1_while_e2_to_pickup(self):
         model=MultiCycle(motions())
         for _ in range(24000):
             model.step(1/60)
             if model.active and model.active[:2]==('outbound','E1'):
-                self.assertEqual(model.engines['E2']['cycle'].state,'TO_PICKUP');break
+                self.assertIn(model.engines['E2']['cycle'].state,('TO_PICKUP','READY_PICKUP'));break
         else:self.fail('E1 outbound never started')
 
 if __name__=='__main__':unittest.main()

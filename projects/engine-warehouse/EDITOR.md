@@ -20,6 +20,13 @@ Alternatively add `C:/IssacsimProject/Issacsim/exts` to the Extensions search pa
 
 ## Normal workflow
 
+Three-engine flow now overlaps independent conveyor work with the robot:
+after outbound placement and return to standby, gate closure/departure no
+longer blocks the next inbound. The monitor shows **CONVEYOR_DISPATCH** until
+the loaded carrier reaches its buffer. Next infeed and repaired-engine
+return also start after storage, during robot return. Shared loading-zone,
+empty-carrier, gate and carrier-spacing conditions still gate movement.
+
 For the three-engine scenario, use **Load three-engine scenario -> Play**.
 The first engine now waits for an actual wrist RGB estimate before pickup;
 an evidence window opens automatically. HOLD prevents pickup when inference

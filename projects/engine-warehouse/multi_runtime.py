@@ -28,7 +28,7 @@ class MultiRuntime:
     def sim_seconds(self):return self.model.time
     def status(self):
         owners=' | '.join(f"{k}: {v['owner']} ({v['clamp_status']})" for k,v in self.model.engines.items())
-        return f'{self.model.phase} | Robot: {self.model.robot_frame.phase} | Vision: {self.model.vision_state}\n{self.model.fault or self.vision_message}\n{owners}\nCells: {self.model.cells}'
+        return f'{self.model.phase} | Robot: {self.model.robot_frame.phase} | Vision: {self.model.vision_state}\n{self.model.fault or self.vision_message}\n{owners}\nDispatching: {list(self.model.dispatches)} | Cells: {self.model.cells}'
     def apply(self):
         with Usd.EditContext(self.stage,self.layer):self.adapter.apply(self.model)
     def tick(self,dt,wall_dt=None):

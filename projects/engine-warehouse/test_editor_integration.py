@@ -12,9 +12,16 @@ manager=omni.kit.app.get_app().get_extension_manager()
 manager.add_path(str(ROOT/'exts'));manager.set_extension_enabled_immediate('engine.warehouse',True)
 from engine_warehouse_editor import get_instance
 async def advance_multi(runtime,seconds):
+    # Let queued native Stop/Reset events complete before starting a new run.
+    for _ in range(2):await omni.kit.app.get_app().next_update_async()
     start=runtime.sim_seconds;runtime.tick(seconds)
     if runtime.model.vision_state=='OBSERVE':
-        await runtime.observe_pickup()
+        # This helper drives observation directly; do not also let the host
+        # schedule a second capture when Replicator advances the timeline.
+        ext=get_instance();ext.busy=True
+        try:await runtime.observe_pickup()
+        finally:
+            omni.timeline.get_timeline_interface().pause();ext.busy=False
         assert runtime.model.vision_state=='ACCEPTED',runtime.model.fault
         runtime.tick(max(0,seconds-(runtime.sim_seconds-start)))
 
@@ -109,4 +116,9 @@ try:
             reported=True
             task.result()
             break
+    if not reported:raise RuntimeError('Editor exited before integration completed')
+except BaseException:
+    import traceback
+    traceback.print_exc()
+    print('EDITOR INTEGRATION FAILED',flush=True)
 finally:app.close()

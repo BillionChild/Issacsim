@@ -15,6 +15,7 @@ def snapshot(model):
         state = ('OUTBOUND_QUEUED' if eid in model.requests else
                  'OUTBOUND_MOVING' if model.active and model.active[:2]==('outbound',eid) else
                  'SHIPPED' if eid in model.shipped else
+                 'CONVEYOR_DISPATCH' if eid in model.dispatches else
                  'PENDING' if not engine['visible'] else
                  engine['cycle'].state if engine['owner'] == 'pallet' else engine['owner'].upper())
         rows[eid] = dict(state=state, vision=engine['cycle'].result or '-',
