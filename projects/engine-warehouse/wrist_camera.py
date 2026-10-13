@@ -11,12 +11,15 @@ def attach(stage):
     for name in ('CameraBracket','CameraOuterDrop','CameraHousing'):
         path=TOOL+'/'+name
         if stage.GetPrimAtPath(path):stage.OverridePrim(path).SetActive(False)
-    if stage.GetPrimAtPath(CAMERA):return CAMERA
+    existing=stage.GetPrimAtPath(CAMERA)
+    # Saving a scene while the runtime owns the camera can leave only an
+    # untyped override in the asset. Existence alone does not mean a camera.
+    if existing and existing.IsA(UsdGeom.Camera) and UsdGeom.Xformable(existing).GetOrderedXformOps():return CAMERA
     # Tool-local optical axis covers the pallet at hover and during approach.
     eye=Gf.Vec3d(.43,.75,-.3);target=Gf.Vec3d(.43,0,-1.05)
     cam=UsdGeom.Camera.Define(stage,CAMERA)
     view=Gf.Matrix4d();view.SetLookAt(eye,target,Gf.Vec3d(0,0,1))
-    cam.AddTransformOp().Set(view.GetInverse())
+    cam.MakeMatrixXform().Set(view.GetInverse())
     cam.CreateFocalLengthAttr(12.)
     cam.CreateHorizontalApertureAttr(20.955);cam.CreateVerticalApertureAttr(20.955)
     cam.CreateClippingRangeAttr(Gf.Vec2f(.02,20.))
