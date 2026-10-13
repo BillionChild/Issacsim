@@ -1,4 +1,4 @@
-"""Rigid wrist camera mounting. No look-at tracking after installation."""
+"""Virtual wrist camera: fixed calibration, without physical mounting geometry."""
 from pxr import UsdGeom,Gf
 
 TOOL='/World/Robot/Base/J1/J2/J3/J4/J5/J6/EngineJig'
@@ -6,6 +6,11 @@ CAMERA=TOOL+'/WristCamera'
 
 def attach(stage):
     if not stage.GetPrimAtPath(TOOL):raise RuntimeError('FANUC tool is missing')
+    # Suppress mounts in older referenced/saved scenes as well as new scenes.
+    # Keep the Camera prim and its calibrated transform/lens unchanged.
+    for name in ('CameraBracket','CameraOuterDrop','CameraHousing'):
+        path=TOOL+'/'+name
+        if stage.GetPrimAtPath(path):stage.OverridePrim(path).SetActive(False)
     if stage.GetPrimAtPath(CAMERA):return CAMERA
     # Tool-local optical axis covers the pallet at hover and during approach.
     eye=Gf.Vec3d(.43,.75,-.3);target=Gf.Vec3d(.43,0,-1.05)
@@ -15,13 +20,6 @@ def attach(stage):
     cam.CreateFocalLengthAttr(12.)
     cam.CreateHorizontalApertureAttr(20.955);cam.CreateVerticalApertureAttr(20.955)
     cam.CreateClippingRangeAttr(Gf.Vec2f(.02,20.))
-    for name,pos,size,color in (
-        ('CameraBracket',(.43,.375,.12),(.04,.75,.04),(.3,.3,.32)),
-        ('CameraOuterDrop',(.43,.75,-.06),(.04,.04,.36),(.3,.3,.32)),
-        ('CameraHousing',(.43,.75,-.24),(.09,.08,.06),(.04,.04,.05))):
-        cube=UsdGeom.Cube.Define(stage,TOOL+'/'+name)
-        cube.CreateSizeAttr(1);cube.AddTranslateOp().Set(Gf.Vec3d(*pos))
-        cube.AddScaleOp().Set(Gf.Vec3d(*size));cube.CreateDisplayColorAttr([Gf.Vec3f(*color)])
     return CAMERA
 
 def open_view():

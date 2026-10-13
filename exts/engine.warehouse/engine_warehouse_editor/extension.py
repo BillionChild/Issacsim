@@ -14,7 +14,7 @@ ROOT=Path(__file__).resolve().parents[3]
 PROJECT=ROOT/'projects/engine-warehouse'
 MULTI_SCENE=ROOT/'external_assets/engines/caterham_duratec/usd/warehouse_multi_layout.usda'
 SCENE=ROOT/'external_assets/engines/caterham_duratec/usd/warehouse_u_layout_preview.usda'
-MODULES=('fanuc_kinematics','u_loop_cycle','u_storage','u_storage_scene','build_u_storage_demo','u_outbound','build_u_outbound_demo','outbound_cycle','editor_runtime')
+MODULES=('fanuc_kinematics','u_loop_cycle','u_storage','wrist_camera','u_storage_scene','build_u_storage_demo','u_outbound','build_u_outbound_demo','outbound_cycle','editor_runtime')
 _instance=None
 def get_instance():return _instance
 

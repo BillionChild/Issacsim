@@ -2,6 +2,12 @@
 
 ## Warehouse connection — 2026-10-13
 
+The wrist camera is now virtual: CameraBracket, CameraOuterDrop and
+CameraHousing are no longer generated, and existing mount geometry is
+deactivated when attaching to an older scene. The Camera prim, calibrated
+transform, lens and gripper geometry remain unchanged. This deliberately
+omits real camera mounting/package clearance from the demonstration.
+
 The three-engine editor scenario now requires a fresh wrist RGB estimate for
 E1 before inbound. OBSERVE freezes the logical scheduler at pickup. Accepted
 pixel-only inference drives an IK approach, jaw closure, level lift and a
