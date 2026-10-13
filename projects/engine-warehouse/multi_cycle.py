@@ -14,10 +14,11 @@ class MultiCycle:
     SPEED = .4
     SHIP_Y = {'E1': 5.4, 'E3': 4.1, 'E2': 2.8}
 
-    def __init__(self, motions, empty_pallet_route=False, level_pickup=False):
+    def __init__(self, motions, empty_pallet_route=False, level_pickup=False, vision_required=False):
         self.motions = motions
         self.empty_pallet_route = empty_pallet_route
         self.level_pickup=level_pickup
+        self.vision_required=vision_required
         for kind in ('inbound', 'outbound'):
             for cell in ('A', 'B'):
                 frames = motions[kind, cell]
@@ -28,6 +29,7 @@ class MultiCycle:
 
     def reset(self):
         self.clamp=None;self.fault=None;self.pickup_checks=[]
+        self.vision_state="WAITING";self.vision_result=None;self.guided_frames=None
         self.requests = []; self.ship_targets = {}
         self.time = 0.; self.events = []; self.cells = {'A': None, 'B': None}
         self.engines = {}
@@ -73,7 +75,11 @@ class MultiCycle:
         self.events.append(dict(time=self.time, event=event, engine=engine))
 
     def _inbound(self, eid, cell):
-        transfer = StorageTransfer(self.motions['inbound',cell])
+        if self.vision_required and eid=='E1' and self.engines[eid]['cycle'].pickup_allowed:
+            if self.vision_state=='WAITING':
+                self.vision_state='OBSERVE';self.phase='E1_VISION_OBSERVE';self._event('VISION_OBSERVE',eid)
+            if self.vision_state!='ACCEPTED':return False
+        transfer = StorageTransfer(self.guided_frames if eid=='E1' and self.guided_frames else self.motions['inbound',cell])
         if self.active or self.cells[cell] is not None or not transfer.try_start(self.engines[eid]['cycle']):
             return False
         self.active = ('inbound',eid,cell,transfer,None)
@@ -208,5 +214,5 @@ class MultiCycle:
 
     def step(self, dt):
         if not math.isfinite(dt) or dt<0:raise ValueError('dt must be finite and nonnegative')
-        while dt>1e-12 and not self.done and not self.fault:
+        while dt>1e-12 and not self.done and not self.fault and self.vision_state!='OBSERVE':
             used=min(dt,1/60);self._tick(used);dt-=used

@@ -20,6 +20,13 @@ Alternatively add `C:/IssacsimProject/Issacsim/exts` to the Extensions search pa
 
 ## Normal workflow
 
+For the three-engine scenario, use **Load three-engine scenario -> Play**.
+The first engine now waits for an actual wrist RGB estimate before pickup;
+an evidence window opens automatically. HOLD prevents pickup when inference
+or calibration fails. Stop / Reset clears the measurement, so the next run
+captures a fresh image. E2/E3 keep the existing replay behavior. After this
+host update, toggle Engine Warehouse OFF -> ON once; no editor restart.
+
 1. **Load Project** once to load the U-layout and connect the controller.
 2. Use the editor's native **Play**: FAIL -> rework wait. Click **Repair complete -> Reinspect** to continue to reinspection and robot storage.
 3. Native **Pause** freezes the process; **Play** resumes it.

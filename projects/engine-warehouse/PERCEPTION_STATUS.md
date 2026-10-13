@@ -1,5 +1,34 @@
 # Wrist image pose estimation — 2026-10-11
 
+## Warehouse connection — 2026-10-13
+
+The three-engine editor scenario now requires a fresh wrist RGB estimate for
+E1 before inbound. OBSERVE freezes the logical scheduler at pickup. Accepted
+pixel-only inference drives an IK approach, jaw closure, level lift and a
+return to the existing rack route. E2/E3 retain their existing replay paths.
+Rejected images, changed camera calibration, missing model or planner errors
+cause HOLD with no pickup. Reset invalidates any in-flight observation.
+
+Enable the updated extension once (OFF -> ON), then **Load three-engine
+scenario -> Play**. The **Warehouse vision | first engine** window shows the
+captured RGB and estimated outline. Subsequent logic edits use Reload Code +
+Reset. Local outputs: `outputs/warehouse-vision/` PNG/JSON evidence and
+`outputs/multi-engine-vision.json`; event CSV includes OBSERVE, ESTIMATED and
+CORRECTION_READY before clamp lock and storage verification.
+
+Validation: 11 offline tests cover compound estimate-driven pickup, level
+rejoin, rejected observations, reset invalidation and existing replay.
+`test_warehouse_vision.py` exercises actual RGB and the extension Play path,
+then completes all three engines. A normal-scene run estimated roughly
+(-0.7 mm, +0.1 mm, -0.07 degrees). This is a fixed-scene check, not a
+generalization benchmark. Full multi-engine anomaly presets are the next step.
+
+The grip is still an ideal kinematic pin/clamp. There is no contact-force or
+swept-volume proof for the complete corrected route. Camera capture/planning
+wall time is excluded from logical process time; current timing is not a
+measured production cycle including vision latency. Earlier sections below
+describe the separate lab milestones.
+
 Implemented: fixed-scene learned RGB ridge regression, nominal/estimated pallet
 outline evidence window, missing-image HOLD, camera-pose mismatch rejection.
 Input is wrist RGB only; estimator imports no USD or case generator.

@@ -101,12 +101,12 @@ class WarehouseExtension(omni.ext.IExt):
             if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
             # Compile current source directly: no same-second .pyc cache surprises.
             self.multi=bool(self.context.get_stage().GetDefaultPrim().GetAttribute('demo:multiEngine').Get())
-            modules=MODULES+('build_multi_motion','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
+            modules=MODULES+('build_multi_motion','level_clamp','pickup_perception','pickup_correction','guided_inbound','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
             for name in modules:
                 file=PROJECT/(name+'.py');module=types.ModuleType(name);module.__file__=str(file)
                 sys.modules[name]=module
                 exec(compile(file.read_bytes(),str(file),'exec'),module.__dict__)
-            self.runtime=(sys.modules['multi_runtime'].MultiRuntime if self.multi else sys.modules['editor_runtime'].EditorRuntime)(self.context.get_stage())
+            self.runtime=sys.modules['multi_runtime'].MultiRuntime(self.context.get_stage(),vision_required=True) if self.multi else sys.modules['editor_runtime'].EditorRuntime(self.context.get_stage())
             self.timeline.set_end_time(86400.)
             self.info.text='Ready. Play starts infeed; Stop resets. Reload keeps this editor open.'
         except Exception as e:
@@ -153,6 +153,8 @@ class WarehouseExtension(omni.ext.IExt):
                 dt=max(0.,float(event.payload.get('dt',0.)))
                 self.runtime.tick(dt*self.speed,wall_dt=dt)
             if self.multi:
+                if self.runtime.model.vision_state=='OBSERVE' and self.timeline.is_playing():
+                    self.busy=True;self.task=asyncio.ensure_future(self.observe_first_engine())
                 self.status.text=f'{self.speed:g}x | Model {self.runtime.sim_seconds:.1f}s\n'+self.runtime.status()
                 self.repair_button.enabled=False;self.outbound_button.enabled=False
                 if self.runtime.finished and self.timeline.is_playing():self.timeline.pause();self.export_metrics()
@@ -166,6 +168,26 @@ class WarehouseExtension(omni.ext.IExt):
                 self.timeline.pause();self.export_metrics()
         except Exception as e:
             self.timeline.pause();self.info.text='Paused after error: '+str(e)
+
+    async def observe_first_engine(self):
+        runtime=self.runtime
+        self.busy=True;self.info.text='OBSERVE: first engine wrist RGB. Robot held at idle.'
+        try:
+            await runtime.observe_pickup()
+            if self.runtime is not runtime:return
+            self.info.text=runtime.model.fault or runtime.vision_message
+            if runtime.model.fault:
+                self.timeline.pause();self.export_metrics()
+            result=runtime.model.vision_result
+            if result and result.get('evidence'):
+                if getattr(self,'vision_evidence',None):self.vision_evidence.destroy()
+                self.vision_evidence=ui.Window('Warehouse vision | first engine',width=540,height=620)
+                with self.vision_evidence.frame:
+                    with ui.VStack():
+                        ui.Label(self.info.text,height=65,word_wrap=True)
+                        ui.Image(result['evidence'],width=512,height=512)
+                        ui.Label('Actual warehouse RGB -> learned estimate -> corrected pickup',height=30)
+        finally:self.busy=False
 
     def rebuild(self):
         if not self.busy:
@@ -197,6 +219,7 @@ class WarehouseExtension(omni.ext.IExt):
         if self.process and self.process.poll() is None:self.process.terminate()
         self.detach()
         self.dashboard.close()
+        if getattr(self,'vision_evidence',None):self.vision_evidence.destroy()
         if getattr(self,'robot_view',None):self.robot_view.destroy();self.robot_view=None
         if getattr(self,'pickup_lab',None):self.pickup_lab.close()
         if self.window:self.window.destroy();self.window=None

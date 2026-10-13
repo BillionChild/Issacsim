@@ -11,6 +11,13 @@ ROOT=Path(__file__).resolve().parents[2]
 manager=omni.kit.app.get_app().get_extension_manager()
 manager.add_path(str(ROOT/'exts'));manager.set_extension_enabled_immediate('engine.warehouse',True)
 from engine_warehouse_editor import get_instance
+async def advance_multi(runtime,seconds):
+    start=runtime.sim_seconds;runtime.tick(seconds)
+    if runtime.model.vision_state=='OBSERVE':
+        await runtime.observe_pickup()
+        assert runtime.model.vision_state=='ACCEPTED',runtime.model.fault
+        runtime.tick(max(0,seconds-(runtime.sim_seconds-start)))
+
 async def test():
     ext=get_instance();assert ext is not None
     await ext.load_async();assert ext.runtime,ext.info.text
@@ -61,7 +68,7 @@ async def test():
     timeline.pause();paused=mr.sim_seconds
     for _ in range(3):await kit.next_update_async()
     assert mr.sim_seconds==paused
-    mr.tick(1200);assert mr.finished and mr.model.shipped==['E1','E3','E2']
+    await advance_multi(mr,1200);assert mr.finished and mr.model.shipped==['E1','E3','E2']
     ext.dashboard.update(mr,force=True)
     assert 'Shipped 3' in ext.dashboard.summary.text
     assert 'SHIPPED' in ext.dashboard.rows['E2'].text
@@ -73,7 +80,7 @@ async def test():
     assert 'Stored: --' in ext.dashboard.detail.text
     ext.dashboard.mode(True)
     assert mr.model.manual
-    mr.tick(210)
+    await advance_multi(mr,210)
     ext.dashboard.select('E3')
     assert ext.dashboard.order_button.enabled
     ext.dashboard.request()
