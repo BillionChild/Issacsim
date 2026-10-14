@@ -22,6 +22,16 @@ Alternatively add `C:/IssacsimProject/Issacsim/exts` to the Extensions search pa
 
 ### First-engine anomaly demonstration
 
+The Monitor includes **ROBOT PROBLEM SOLVING | ENG-0001**: Observe ->
+Estimate -> Correct / grip -> Verify seat. Blue indicates activity, orange
+HOLD, green verified completion. RGB estimates are labeled separately from
+the measured rack-seat error and maximum lift tilt. An accepted image alone
+does not mean success; a recorded E1 seating check is required. Completed
+observations and recaptures reset with the scenario. Mask clearing remains
+operator-assisted. This panel always describes E1, independent of the
+inventory-row selection. Toggle the extension OFF -> ON once for this UI
+update. The existing image evidence window continues to show the RGB frame.
+
 After loading the three-engine scenario and before Play, select a case in
 **First engine anomaly**, then click **Apply case**. Available cases:
 `normal`, X stop error (`stop_x`, 30 mm), Y offset (`lateral_y`, 15 mm),
