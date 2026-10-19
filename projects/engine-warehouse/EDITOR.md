@@ -114,7 +114,7 @@ Run `tools/token_usage_report.py --session <local Codex rollout JSONL>` with Pyt
 
 ## Windows HTTP port startup failure
 If startup reports WinError 10013 while binding 0.0.0.0:8011, inspect Windows TCP excluded port ranges before changing the application or clearing caches. On 2026-10-02 the range 7964-8063 included 8011; a direct bind failed while port 18011 succeeded.
-Run projects/engine-warehouse/start_editor.ps1 to start the regular editor with HTTP port 18011 and random port fallback disabled. This leaves the installation and Windows exclusions unchanged. If Windows later reserves this port too, check another free port. External HTTP clients must use the selected port. The original launcher still uses its original settings.
+Run projects/engine-warehouse/start_editor.ps1 to start the regular editor with HTTP port 18011 and random port fallback disabled. The script also passes --ext-folder for this repository's exts directory and --enable engine.warehouse on every launch, so extension registration does not depend on saving the USD stage or the previous session. This leaves the installation and Windows exclusions unchanged. If Windows later reserves this port too, check another free port. External HTTP clients must use the selected port. The original launcher still uses its original settings.
 
 
 ## Pickup-ready standby (2026-10-02)
