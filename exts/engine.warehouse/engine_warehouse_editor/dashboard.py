@@ -1,6 +1,7 @@
 """Read-only warehouse monitor. Times come from model events, not wall time."""
 import time
 import omni.ui as ui
+from .ui_help import STYLE, tooltip, button
 
 
 def serial(eid):
@@ -68,43 +69,43 @@ def recovery_snapshot(model):
 class Dashboard:
     def __init__(self):
         self.selected='E1'; self.last=0.; self.runtime=None
-        self.window=ui.Window('Engine Warehouse Monitor',width=650,height=660)
+        self.window=ui.Window('Engine Warehouse Monitor',width=810,height=760)
         with self.window.frame:
-            with ui.VStack(spacing=8):
-                ui.Label('ENGINE WAREHOUSE | LIVE MONITOR',height=26)
-                self.summary=ui.Label('',height=42,word_wrap=True)
-                ui.Label('01  ROBOT RECOVERY | ENG-0001',height=22)
-                self.recovery_title=ui.Label('',height=38,word_wrap=True)
+            with ui.VStack(spacing=8,style=STYLE):
+                ui.Label('ENGINE WAREHOUSE | LIVE MONITOR',height=36)
+                self.summary=ui.Label('',height=64,word_wrap=True)
+                ui.Label('01  ROBOT RECOVERY | ENG-0001',height=36)
+                self.recovery_title=ui.Label('',height=64,word_wrap=True)
                 self.recovery_steps=[]
-                with ui.HStack(height=32,spacing=4):
+                with ui.HStack(height=56,spacing=4):
                     for name in ('Observe','Estimate','Correct / grip','Verify seat'):
-                        self.recovery_steps.append(ui.Button(name,enabled=False))
-                self.recovery_estimate=ui.Label('',height=34,word_wrap=True)
-                self.recovery_outcome=ui.Label('',height=34,word_wrap=True)
-                ui.Label('02  INVENTORY | select a cell or engine',height=22)
+                        self.recovery_steps.append(button(name,enabled=False))
+                self.recovery_estimate=ui.Label('',height=52,word_wrap=True,tooltip_fn=tooltip('카메라 영상에서 추정한 위치·회전 오차입니다.\n실제로 주입한 정답 좌표를 표시하는 것이 아닙니다. 거부된 추정은 로봇 제어에 사용하지 않습니다.'))
+                self.recovery_outcome=ui.Label('',height=52,word_wrap=True,tooltip_fn=tooltip('엔진 안착 위치 오차와 리프트 중 최대 기울기입니다.\n영상 승인만으로 성공이 되지는 않으며 안착 검증 후 VERIFIED가 표시됩니다. 접촉력 검증은 포함하지 않습니다.'))
+                ui.Label('02  INVENTORY | select a cell or engine',height=36)
                 self.cells={}
                 with ui.HStack(height=40,spacing=8):
                     for cell in ('A','B'):
-                        self.cells[cell]=ui.Button('',clicked_fn=lambda c=cell:self.select_cell(c))
-                ui.Label('Serial | location/state | vision | cell',height=20)
+                        self.cells[cell]=button('',help_text='보관 중인 엔진을 선택합니다.\n빈 셀은 선택할 수 없습니다. 상세 정보는 Details에서 확인하세요.',clicked_fn=lambda c=cell:self.select_cell(c))
+                ui.Label('Serial | location/state | vision | cell',height=36)
                 self.rows={}
                 for eid in ('E1','E2','E3'):
-                    self.rows[eid]=ui.Button('',height=30,clicked_fn=lambda e=eid:self.select(e))
-                self.advanced=ui.CollapsableFrame('Details / manual dispatch',collapsed=True,height=0)
+                    self.rows[eid]=button('',height=36,help_text='이 엔진의 위치·검사 결과·입고 시간을 선택합니다.\n수동 출고 모드에서는 선택한 엔진을 출고 요청할 수 있습니다.',clicked_fn=lambda e=eid:self.select(e))
+                self.advanced=ui.CollapsableFrame('Details / manual dispatch',collapsed=True,height=0,tooltip_fn=tooltip('선택 엔진의 상세 기록, 재촬영 횟수, 수동 출고와 이벤트 로그를 펼칩니다.'))
                 with self.advanced:
-                    with ui.ScrollingFrame(height=240):
+                    with ui.ScrollingFrame(height=360):
                         with ui.VStack(spacing=5):
-                            self.recovery_attempts=ui.Label('',height=24)
+                            self.recovery_attempts=ui.Label('',height=36)
                             self.detail=ui.Label('',height=75,word_wrap=True)
-                            with ui.HStack(height=28):
-                                self.auto_button=ui.Button('Auto demo',clicked_fn=lambda:self.mode(False))
-                                self.manual_button=ui.Button('Manual outbound',clicked_fn=lambda:self.mode(True))
-                            self.mode_label=ui.Label('',height=24)
-                            self.order_button=ui.Button('Request selected engine outbound',height=30,clicked_fn=self.request)
-                            self.queue=ui.Label('',height=26)
-                            ui.Label('Recent events (simulation time)',height=20)
+                            with ui.HStack(height=36):
+                                self.auto_button=button('Auto demo',clicked_fn=lambda:self.mode(False))
+                                self.manual_button=button('Manual outbound',clicked_fn=lambda:self.mode(True))
+                            self.mode_label=ui.Label('',height=36)
+                            self.order_button=button('Request selected engine outbound',height=36,clicked_fn=self.request)
+                            self.queue=ui.Label('',height=36)
+                            ui.Label('Recent events (simulation time)',height=36)
                             self.events=ui.Label('',height=135,word_wrap=True)
-                ui.Label('E1 vision-guided | E2/E3 replay | Kinematic demo',height=20)
+                ui.Label('E1 vision-guided | E2/E3 replay | Kinematic demo',height=36)
         self.update(None,force=True)
 
     def mode(self,manual):

@@ -16,6 +16,10 @@ async def test():
     m=ext.runtime.model;panel=ext.dashboard
     ext.timeline.pause()
     assert ext.advanced.collapsed and panel.advanced.collapsed
+    assert ext.case_combo.has_tooltip_fn() and panel.order_button.has_tooltip_fn()
+    # Exercise native tooltip construction without requiring a mouse in headless Kit.
+    panel.order_button.call_tooltip_fn()
+    ext.case_combo.call_tooltip_fn()
     def show():
         panel.update(ext.runtime,force=True)
         ext.update(None)
