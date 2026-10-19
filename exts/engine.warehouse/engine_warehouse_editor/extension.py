@@ -29,41 +29,46 @@ class WarehouseExtension(omni.ext.IExt):
         if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
         from warehouse_cases import CASES
         self.case_names=list(CASES)
-        self.window=ui.Window('Engine Warehouse',width=500,height=590)
+        self.window=ui.Window('Engine Warehouse',width=440,height=460)
         with self.window.frame:
-            with ui.VStack(spacing=7):
-                self.info=ui.Label('Load Project to begin. Existing editor stays open.',word_wrap=True)
-                ui.Button('Open warehouse monitor',clicked_fn=self.dashboard.show)
-                ui.Button('Open Robot Camera',clicked_fn=self.open_robot_camera)
-                ui.Button('Open pickup anomaly lab',clicked_fn=self.open_pickup_lab)
-                ui.Button('Load Project',clicked_fn=self.load)
-                ui.Button('Load three-engine scenario',clicked_fn=self.load_multi)
-                ui.Label('First engine anomaly (choose after Stop / Reset)',height=20)
-                with ui.HStack(height=24):
+            with ui.VStack(spacing=6):
+                ui.Label('ENGINE WAREHOUSE | DEMO CONTROL',height=26)
+                ui.Button('Load three-engine demo',height=30,clicked_fn=self.load_multi)
+                ui.Label('First-engine case | select before Play',height=20)
+                with ui.HStack(height=28):
                     self.case_combo=ui.ComboBox(0,*self.case_names)
                     ui.Button('Apply case',clicked_fn=self.apply_case)
-                with ui.HStack(height=24):
-                    ui.Button('Retry observation',clicked_fn=lambda:self.retry_vision(False))
-                    ui.Button('Clear camera mask + retry',clicked_fn=lambda:self.retry_vision(True))
-                with ui.HStack():
+                with ui.HStack(height=30):
                     ui.Button('Play',clicked_fn=self.play)
                     ui.Button('Pause',clicked_fn=self.timeline.pause)
-                    ui.Button('Stop / Reset',clicked_fn=self.reset)
+                    ui.Button('Reset',clicked_fn=self.reset)
                 self.speed=1.
-                with ui.HStack():
+                with ui.HStack(height=26):
+                    ui.Label('Playback',width=80)
                     for speed in (1.,2.,4.):
                         ui.Button(f'{speed:g}x',clicked_fn=lambda v=speed:self.set_speed(v))
-                ui.Button('Export timing / performance CSV',clicked_fn=self.export_metrics)
-                self.outbound_button=ui.Button('Request outbound',clicked_fn=self.request_outbound)
-                self.repair_button=ui.Button('Repair complete -> Reinspect',clicked_fn=self.repair)
-                ui.Button('Reload Code + Reset',clicked_fn=self.reload_code)
-                ui.Button('Rebuild + Check Motion',clicked_fn=self.rebuild)
-                with ui.HStack():
-                    ui.Button('Top',clicked_fn=lambda:self.camera('PreviewCamera'))
-                    ui.Button('Perspective',clicked_fn=lambda:self.camera('PerspectiveCamera'))
-                self.status=ui.Label('Not loaded',word_wrap=True)
-                ui.Label('Native editor Play/Pause/Stop also control this demo.',word_wrap=True)
-                ui.Label('Simulated vision and kinematic grasp. Stop resets the full demo.',word_wrap=True)
+                with ui.HStack(height=28):
+                    ui.Button('Monitor',clicked_fn=self.dashboard.show)
+                    ui.Button('Robot camera',clicked_fn=self.open_robot_camera)
+                    ui.Button('Overview',clicked_fn=lambda:self.camera('PerspectiveCamera'))
+                self.info=ui.Label('Load demo, choose a case, then Play.',height=42,word_wrap=True)
+                self.recovery_controls=ui.HStack(height=28,visible=False)
+                with self.recovery_controls:
+                    ui.Button('Retry observation',clicked_fn=lambda:self.retry_vision(False))
+                    ui.Button('Clear camera mask + retry',clicked_fn=lambda:self.retry_vision(True))
+                self.advanced=ui.CollapsableFrame('Advanced | development / manual controls',collapsed=True,height=0)
+                with self.advanced:
+                    with ui.ScrollingFrame(height=220):
+                        with ui.VStack(spacing=5):
+                            ui.Button('Load single-engine project',height=26,clicked_fn=self.load)
+                            ui.Button('Open pickup anomaly lab',height=26,clicked_fn=self.open_pickup_lab)
+                            ui.Button('Export timing / performance CSV',height=26,clicked_fn=self.export_metrics)
+                            self.outbound_button=ui.Button('Request outbound',height=26,clicked_fn=self.request_outbound)
+                            self.repair_button=ui.Button('Repair complete -> Reinspect',height=26,clicked_fn=self.repair)
+                            ui.Button('Reload Code + Reset',height=26,clicked_fn=self.reload_code)
+                            ui.Button('Rebuild + Check Motion',height=26,clicked_fn=self.rebuild)
+                            ui.Button('Top camera',height=26,clicked_fn=lambda:self.camera('PreviewCamera'))
+                            self.status=ui.Label('Not loaded',height=130,word_wrap=True)
         self.update_sub=omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.update,name='engine.warehouse.update')
         self.timeline_sub=self.timeline.get_timeline_event_stream().create_subscription_to_pop(self.timeline_event,name='engine.warehouse.timeline')
 
@@ -172,6 +177,7 @@ class WarehouseExtension(omni.ext.IExt):
         if self.runtime and self.context.get_stage()!=self.runtime.stage:
             self.detach();self.info.text='Stage changed. Load Project to reconnect.'
         self.dashboard.update(self.runtime)
+        self.recovery_controls.visible=bool(self.runtime and self.multi and self.runtime.model.vision_state=='HOLD')
         if not self.runtime or self.busy:
             self.repair_button.enabled=False;self.outbound_button.enabled=False;return
         try:

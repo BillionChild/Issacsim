@@ -14,8 +14,12 @@ async def test():
     ext=get_instance();ext.multi=True;await ext.load_async()
     assert ext.runtime,ext.info.text
     m=ext.runtime.model;panel=ext.dashboard
+    ext.timeline.pause()
+    assert ext.advanced.collapsed and panel.advanced.collapsed
     def show():
         panel.update(ext.runtime,force=True)
+        ext.update(None)
+        assert ext.recovery_controls.visible==(m.vision_state=='HOLD')
         return recovery_snapshot(m)
     assert show()['steps']==['WAIT']*4
     m.vision_state='OBSERVE'

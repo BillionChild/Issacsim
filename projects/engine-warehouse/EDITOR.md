@@ -20,6 +20,17 @@ Alternatively add `C:/IssacsimProject/Issacsim/exts` to the Extensions search pa
 
 ## Normal workflow
 
+### Portfolio UI
+
+Engine Warehouse is the demo control panel: Load three-engine demo, case,
+Play/Pause/Reset, playback speed and views. Retry / mask-clear controls appear
+only during a vision HOLD. Development, single-engine and repair tools remain
+in the collapsed Advanced section. Monitor presents robot recovery followed
+by inventory for the two scheduled cells; unused cells are omitted from the
+UI, not removed from the scene. Manual dispatch, recapture counts, detailed
+timing and raw events are under Details / manual dispatch. Toggle the
+extension OFF -> ON once to rebuild these panels. Robot motion is unchanged.
+
 ### First-engine anomaly demonstration
 
 The Monitor includes **ROBOT PROBLEM SOLVING | ENG-0001**: Observe ->

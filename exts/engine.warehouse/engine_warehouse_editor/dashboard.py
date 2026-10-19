@@ -68,18 +68,12 @@ def recovery_snapshot(model):
 class Dashboard:
     def __init__(self):
         self.selected='E1'; self.last=0.; self.runtime=None
-        self.window=ui.Window('Engine Warehouse Monitor',width=710,height=840)
+        self.window=ui.Window('Engine Warehouse Monitor',width=650,height=660)
         with self.window.frame:
             with ui.VStack(spacing=8):
-                ui.Label('ENGINE WAREHOUSE | LIVE STATUS',height=26)
-                with ui.HStack(height=28):
-                    self.auto_button=ui.Button('Auto demo',clicked_fn=lambda:self.mode(False))
-                    self.manual_button=ui.Button('Manual outbound',clicked_fn=lambda:self.mode(True))
-                self.mode_label=ui.Label('',height=24)
-                self.order_button=ui.Button('Request selected engine outbound',height=30,clicked_fn=self.request)
-                self.queue=ui.Label('',height=26)
+                ui.Label('ENGINE WAREHOUSE | LIVE MONITOR',height=26)
                 self.summary=ui.Label('',height=42,word_wrap=True)
-                ui.Label('ROBOT PROBLEM SOLVING | ENG-0001 | Wrist RGB',height=22)
+                ui.Label('01  ROBOT RECOVERY | ENG-0001',height=22)
                 self.recovery_title=ui.Label('',height=38,word_wrap=True)
                 self.recovery_steps=[]
                 with ui.HStack(height=32,spacing=4):
@@ -87,22 +81,30 @@ class Dashboard:
                         self.recovery_steps.append(ui.Button(name,enabled=False))
                 self.recovery_estimate=ui.Label('',height=34,word_wrap=True)
                 self.recovery_outcome=ui.Label('',height=34,word_wrap=True)
-                self.recovery_attempts=ui.Label('',height=24)
-                ui.Label('First engine only | Mask clearing is operator-assisted | Kinematic verification',height=22)
-                ui.Label('Rack front view | select a cell or engine',height=20)
+                ui.Label('02  INVENTORY | select a cell or engine',height=22)
                 self.cells={}
-                for left,right in (('Left upper','B'),('Left lower','A')):
-                    with ui.HStack(height=55,spacing=8):
-                        ui.Button(left+'\nEMPTY (unused)',enabled=False)
-                        self.cells[right]=ui.Button('',clicked_fn=lambda c=right:self.select_cell(c))
+                with ui.HStack(height=40,spacing=8):
+                    for cell in ('A','B'):
+                        self.cells[cell]=ui.Button('',clicked_fn=lambda c=cell:self.select_cell(c))
                 ui.Label('Serial | location/state | vision | cell',height=20)
                 self.rows={}
                 for eid in ('E1','E2','E3'):
                     self.rows[eid]=ui.Button('',height=30,clicked_fn=lambda e=eid:self.select(e))
-                self.detail=ui.Label('',height=75,word_wrap=True)
-                ui.Label('Recent events (simulation time)',height=20)
-                self.events=ui.Label('',word_wrap=True)
-                ui.Label('Demo serials | simulated vision | times reset with Stop / Reset',height=24)
+                self.advanced=ui.CollapsableFrame('Details / manual dispatch',collapsed=True,height=0)
+                with self.advanced:
+                    with ui.ScrollingFrame(height=240):
+                        with ui.VStack(spacing=5):
+                            self.recovery_attempts=ui.Label('',height=24)
+                            self.detail=ui.Label('',height=75,word_wrap=True)
+                            with ui.HStack(height=28):
+                                self.auto_button=ui.Button('Auto demo',clicked_fn=lambda:self.mode(False))
+                                self.manual_button=ui.Button('Manual outbound',clicked_fn=lambda:self.mode(True))
+                            self.mode_label=ui.Label('',height=24)
+                            self.order_button=ui.Button('Request selected engine outbound',height=30,clicked_fn=self.request)
+                            self.queue=ui.Label('',height=26)
+                            ui.Label('Recent events (simulation time)',height=20)
+                            self.events=ui.Label('',height=135,word_wrap=True)
+                ui.Label('E1 vision-guided | E2/E3 replay | Kinematic demo',height=20)
         self.update(None,force=True)
 
     def mode(self,manual):
@@ -159,7 +161,7 @@ class Dashboard:
         repair=sum(r['state']=='WAIT_REWORK' for r in rows.values())
         occupied=sum(e is not None for e in model.cells.values())
         self.summary.text=(f'Model {model.time:.1f}s | Infeed / waiting {waiting} | Repair {repair}\n'
-                           f'Stored {occupied}/4 (2 scheduled cells) | Shipped {len(model.shipped)}')
+                           f'Active cells {occupied}/2 | Shipped {len(model.shipped)}')
         for cell,button in self.cells.items():
             eid=model.cells[cell];button.enabled=bool(eid)
             button.text=f'{cell} | '+(serial(eid) if eid else 'EMPTY')
