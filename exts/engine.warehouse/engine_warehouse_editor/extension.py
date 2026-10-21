@@ -57,7 +57,7 @@ class WarehouseExtension(omni.ext.IExt):
                 with self.recovery_controls:
                     button('Retry observation',clicked_fn=lambda:self.retry_vision(False))
                     button('Clear camera mask + retry',clicked_fn=lambda:self.retry_vision(True))
-                self.advanced=ui.CollapsableFrame('Advanced | development / manual controls',collapsed=True,height=0,tooltip_fn=tooltip('개발·개별 테스트용 메뉴를 펼칩니다.\n일반 시연에는 이 영역을 열 필요가 없습니다.'))
+                self.advanced=ui.CollapsableFrame('Advanced | development / manual controls',collapsed=True,height=0,tooltip_fn=tooltip('Expand development and individual test tools.\nNot needed for normal demonstration playback.'))
                 with self.advanced:
                     with ui.ScrollingFrame(height=360):
                         with ui.VStack(spacing=5):

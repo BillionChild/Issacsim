@@ -80,18 +80,18 @@ class Dashboard:
                 with ui.HStack(height=56,spacing=4):
                     for name in ('Observe','Estimate','Correct / grip','Verify seat'):
                         self.recovery_steps.append(button(name,enabled=False))
-                self.recovery_estimate=ui.Label('',height=52,word_wrap=True,tooltip_fn=tooltip('카메라 영상에서 추정한 위치·회전 오차입니다.\n실제로 주입한 정답 좌표를 표시하는 것이 아닙니다. 거부된 추정은 로봇 제어에 사용하지 않습니다.'))
-                self.recovery_outcome=ui.Label('',height=52,word_wrap=True,tooltip_fn=tooltip('엔진 안착 위치 오차와 리프트 중 최대 기울기입니다.\n영상 승인만으로 성공이 되지는 않으며 안착 검증 후 VERIFIED가 표시됩니다. 접촉력 검증은 포함하지 않습니다.'))
+                self.recovery_estimate=ui.Label('',height=52,word_wrap=True,tooltip_fn=tooltip('Position and rotation estimated from camera pixels, not injected ground truth.\nRejected estimates are not used for robot control.'))
+                self.recovery_outcome=ui.Label('',height=52,word_wrap=True,tooltip_fn=tooltip('Rack-seat position error and maximum lift tilt.\nVERIFIED requires a seating check, not just image acceptance. Contact forces are not validated.'))
                 ui.Label('02  INVENTORY | select a cell or engine',height=36)
                 self.cells={}
                 with ui.HStack(height=40,spacing=8):
                     for cell in ('A','B'):
-                        self.cells[cell]=button('',help_text='보관 중인 엔진을 선택합니다.\n빈 셀은 선택할 수 없습니다. 상세 정보는 Details에서 확인하세요.',clicked_fn=lambda c=cell:self.select_cell(c))
+                        self.cells[cell]=button('',help_text='Select the engine stored in this cell.\nEmpty cells cannot be selected. Open Details for its records.',clicked_fn=lambda c=cell:self.select_cell(c))
                 ui.Label('Serial | location/state | vision | cell',height=36)
                 self.rows={}
                 for eid in ('E1','E2','E3'):
-                    self.rows[eid]=button('',height=36,help_text='이 엔진의 위치·검사 결과·입고 시간을 선택합니다.\n수동 출고 모드에서는 선택한 엔진을 출고 요청할 수 있습니다.',clicked_fn=lambda e=eid:self.select(e))
-                self.advanced=ui.CollapsableFrame('Details / manual dispatch',collapsed=True,height=0,tooltip_fn=tooltip('선택 엔진의 상세 기록, 재촬영 횟수, 수동 출고와 이벤트 로그를 펼칩니다.'))
+                    self.rows[eid]=button('',height=36,help_text='Select this engine to inspect its location, inspection result and inbound times.\nIn manual mode, request outbound for the selected engine.',clicked_fn=lambda e=eid:self.select(e))
+                self.advanced=ui.CollapsableFrame('Details / manual dispatch',collapsed=True,height=0,tooltip_fn=tooltip('Expand selected-engine records, recapture counts, manual outbound controls and event logs.'))
                 with self.advanced:
                     with ui.ScrollingFrame(height=360):
                         with ui.VStack(spacing=5):

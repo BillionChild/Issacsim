@@ -23,9 +23,9 @@ Alternatively add `C:/IssacsimProject/Issacsim/exts` to the Extensions search pa
 ### Portfolio UI
 
 Main text/buttons use 18 px text and larger rows. Hover action buttons, the
-case selector or details headings for Korean help explaining purpose,
-prerequisites and reset behavior. Tooltip text uses the local Windows
-Malgun font at C:/Windows/Fonts/malgun.ttf (not bundled in Git). Reload the
+case selector or details headings for English help explaining purpose,
+prerequisites and reset behavior. Tooltip text uses the default Kit font
+and dark text on the standard light tooltip background. Reload the
 extension OFF -> ON for font/layout/help updates.
 
 Engine Warehouse is the demo control panel: Load three-engine demo, case,
