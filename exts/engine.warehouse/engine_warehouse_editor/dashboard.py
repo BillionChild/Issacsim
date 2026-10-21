@@ -48,7 +48,7 @@ def recovery_snapshot(model):
         tone='success'
     else:
         headline={'WAITING':'Waiting for first engine',
-                  'OBSERVE':'Observing | Capturing and estimating wrist RGB',
+                  'OBSERVE':'Observing | Capturing and estimating engine pose',
                   'ACCEPTED':'Correcting | Estimate accepted; seating not yet verified',
                   'HOLD':'HOLD | Observation rejected'}.get(state,state)
         tone='hold' if state=='HOLD' else 'active'
@@ -57,6 +57,10 @@ def recovery_snapshot(model):
         x,y,yaw=result['pose']
         estimate=f'Image estimate: X {x:+.1f} mm | Y {y:+.1f} mm | yaw {yaw:+.2f} deg'
         if not result.get('accepted'):estimate+=' (rejected; not used)'
+    if result.get('pose6') is not None:
+        x,y,z,rx,ry,rz=result['pose6']
+        estimate=f'Engine XYZ: {x:+.1f}, {y:+.1f}, {z:+.1f} mm\nRoll / pitch / yaw: {rx:+.2f}, {ry:+.2f}, {rz:+.2f} deg (depth)'
+        if not result.get('accepted'):estimate+=' - REJECTED'
     observations=len(model.observations)
     outcome='Seat error: -- | Correction not verified'
     if check:
@@ -87,7 +91,7 @@ class Dashboard:
                 with ui.HStack(height=40,spacing=8):
                     for cell in ('A','B'):
                         self.cells[cell]=button('',help_text='Select the engine stored in this cell.\nEmpty cells cannot be selected. Open Details for its records.',clicked_fn=lambda c=cell:self.select_cell(c))
-                ui.Label('Serial | location/state | vision | cell',height=36)
+                ui.Label('Serial | location/state | part check | cell',height=36)
                 self.rows={}
                 for eid in ('E1','E2','E3'):
                     self.rows[eid]=button('',height=36,help_text='Select this engine to inspect its location, inspection result and inbound times.\nIn manual mode, request outbound for the selected engine.',clicked_fn=lambda e=eid:self.select(e))

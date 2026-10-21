@@ -19,7 +19,8 @@ def fk(q,base_position=None):
 
 def ik(position,yaw,seed,base_position=None):
     base=BASE_POSITION if base_position is None else np.asarray(base_position)
-    target=Rotation.from_euler('z',yaw,degrees=True).as_matrix()
+    target=Rotation.from_euler('z',yaw,degrees=True).as_matrix() if np.ndim(yaw)==0 else np.asarray(yaw)
+    if target.shape!=(3,3) or not np.isfinite(target).all():raise ValueError('Invalid target orientation')
     def residual(q):
         p,r=fk(q,base)
         return np.r_[p-position,Rotation.from_matrix(target.T@r).as_rotvec()]

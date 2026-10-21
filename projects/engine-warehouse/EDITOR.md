@@ -39,6 +39,16 @@ extension OFF -> ON once to rebuild these panels. Robot motion is unchanged.
 
 ### First-engine anomaly demonstration
 
+For **engine-only misplacement**, choose `engine_shift`, `engine_high`,
+`engine_roll`, `engine_pitch`, or `engine_combined`. The pallet remains fixed.
+`engine_normal` is the depth reference baseline; `engine_combined_occluded`
+adds the mask/HOLD/retry test. These use geometric RGB-D registration, not
+the old RGB regressor. Observe XYZ and roll/pitch/yaw in Monitor, followed by
+tilted pickup, lift, leveling above the conveyor, and rack seating. Only
+assembly defects/missing parts enter the repair loop. Pose errors do not.
+See [ENGINE_POSE.md](ENGINE_POSE.md) for calibration and scope. The local
+`outputs/engine-depth/reference.npz` is required for engine-only cases.
+
 The Monitor includes **ROBOT PROBLEM SOLVING | ENG-0001**: Observe ->
 Estimate -> Correct / grip -> Verify seat. Blue indicates activity, orange
 HOLD, green verified completion. RGB estimates are labeled separately from

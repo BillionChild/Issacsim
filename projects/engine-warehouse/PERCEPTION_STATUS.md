@@ -1,5 +1,15 @@
 # Wrist image pose estimation — 2026-10-11
 
+## Independent engine pose — 2026-10-21
+
+Engine-only presets now vary XYZ and roll/pitch/yaw while holding the pallet
+fixed. The original learned RGB path is retained for the older coupled
+pallet cases; the new path uses calibrated depth and nominal-engine rigid
+registration. It is geometric perception, not a six-axis learned model.
+The planner targets the observed engine-to-gripper transform, lifts while
+preserving initial tilt, levels in air, and retains the existing final-seat
+limits. Part-quality FAIL alone routes to repair. See [ENGINE_POSE.md](ENGINE_POSE.md).
+
 ## Warehouse anomaly cases — 2026-10-13
 
 The first engine supports X stop error (30 mm), lateral Y (15 mm), yaw

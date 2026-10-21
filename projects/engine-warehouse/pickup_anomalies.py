@@ -7,7 +7,8 @@ FOLDER=ROOT/'external_assets/engines/caterham_duratec/usd'
 OUTPUT=FOLDER/'pickup_anomaly_preview.usda'
 CAMERA='/World/PickupCamera'
 # Metres/degrees: experimental perturbations, not robot correction limits.
-from warehouse_cases import CASES
+from warehouse_cases import CASES as ALL_CASES
+CASES={name:value for name,value in ALL_CASES.items() if not name.startswith('engine_')}
 
 def build():
     s=Usd.Stage.CreateNew(str(OUTPUT)) if not OUTPUT.exists() else Usd.Stage.Open(str(OUTPUT))

@@ -10,7 +10,7 @@ STYLE={
 HELP={
     'Load three-engine demo':'Load the three-engine inbound, repair-return and outbound scenario.\nReview the save prompt before replacing the scene. Then choose a case and press Play.',
     'Apply case':'Apply the selected anomaly to the first engine.\nUse Reset > select case > Apply case. Cases cannot change during playback.',
-    'Play':'Start or resume the conveyors and robot.\nThe first engine uses a camera pose estimate for corrected pickup.',
+    'Play':'Start or resume the conveyors and robot.\nThe first engine uses a camera pose estimate for corrected pickup. Only part defects or missing parts enter repair; seating pose errors are corrected at pickup.',
     'Pause':'Pause while keeping the current pose and progress.\nUse this to explain the camera image or correction result.',
     'Reset':'Restart the entire scenario. Keep the selected case, but clear measurements, events and recapture counts.',
     'Monitor':'Open robot recovery progress, seating verification and warehouse inventory.',
@@ -22,7 +22,7 @@ HELP={
     'Open pickup anomaly lab':'Open the development lab to test anomaly injection, image estimation and pickup correction separately.',
     'Export timing / performance CSV':'Save current events, performance and verification results under outputs.\nExport before Reset. Existing files with the same names are overwritten.',
     'Request outbound':'Request outbound in single-engine mode.\nFor the three-engine scenario, use manual dispatch in Monitor.',
-    'Repair complete -> Reinspect':'Mark repair complete and start reinspection while the single-engine scenario is waiting for repair.',
+    'Repair complete -> Reinspect':'Mark assembly defect / missing-part repair complete and start reinspection. Engine seating pose errors are handled by grip correction, not this repair loop.',
     'Reload Code + Reset':'Reload motion logic and reset the scenario.\nFor UI changes, toggle the extension OFF > ON instead.',
     'Rebuild + Check Motion':'Regenerate and validate development robot paths.\nNot required for normal playback; generation may take time.',
     'Top camera':'Switch the main viewport to the top-down view.',
@@ -30,7 +30,7 @@ HELP={
     'Manual outbound':'Select immediately after Reset. Choose outbound engines manually instead of generating automatic orders.',
     'Request selected engine outbound':'Queue outbound for the selected stored engine.\nProcessing waits for the robot and loading zone. Disabled when a request is unavailable.',
 }
-CASE_HELP='Choose an anomaly for the first engine.\nnormal: no fault / stop_x: 30 mm X stop error\nlateral_y: 15 mm Y offset / yaw: 2 deg rotation\noccluded: camera-image mask\nx_y, x_yaw, y_yaw, x_y_yaw: combined offsets\ncombined_occluded: combined offsets plus mask\nPress Apply case after selecting.'
+CASE_HELP='Choose a case, then Apply case before Play.\n\nPallet + engine: normal, stop_x (30 mm),\nlateral_y (15 mm), yaw (2 deg), x_y, x_yaw,\ny_yaw, x_y_yaw. These use learned RGB.\noccluded / combined_occluded add an image mask.\n\nEngine only (pallet stays fixed; depth geometry):\nengine_normal: reference engine pose\nengine_shift: X/Y/yaw error\nengine_high: 20 mm raised engine\nengine_roll / engine_pitch: tilted engine\nengine_combined: XYZ + roll/pitch/yaw\nengine_combined_occluded: pose error + mask'
 
 def tooltip(text):
     def build():

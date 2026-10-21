@@ -8,7 +8,7 @@ import math
 from u_loop_cycle import ULoopCycle
 from u_storage import StorageTransfer
 from outbound_cycle import OutboundCycle
-from warehouse_cases import CASES
+from warehouse_cases import CASES,ENGINE_CASES
 
 
 class MultiCycle:
@@ -39,7 +39,7 @@ class MultiCycle:
         for i, script in enumerate((('OK',), ('FAIL','OK'), ('OK',)), 1):
             cycle = ULoopCycle(script)
             self.engines[f'E{i}'] = dict(cycle=cycle, owner='pallet', cell=None,
-                position=cycle.position, yaw=0., pallet_yaw=0., pallet_position=cycle.position, pallet_visible=i==1, visible=i==1,clamp_status='OPEN')
+                position=cycle.position, yaw=0., roll=0., pitch=0., pallet_yaw=0., pallet_position=cycle.position, pallet_visible=i==1, visible=i==1,clamp_status='OPEN')
         self.carriers = {f'C{i+1}': dict(position=(2.5+i*1.3,0.,.7), engine=None,gate_open=0.) for i in range(4)}
         self.robot_frame = self.motions['inbound','A'][0]
         self.phase = 'E1_INFEED'; self.done = False; self.active = None
@@ -61,7 +61,7 @@ class MultiCycle:
         self._event('VISION_REOBSERVE','E1');return True
 
     def _pallet_pose(self,eid,e):
-        cycle=e['cycle'];dx=dy=yaw=0.
+        cycle=e['cycle'];dx=dy=yaw=blend=0.
         if eid=='E1' and cycle.state in ('TO_PICKUP','READY_PICKUP'):
             progress=max(0.,min(1.,1.-math.dist(cycle.position,cycle.PICKUP)/.4))
             blend=progress*progress*(3-2*progress)
@@ -69,6 +69,11 @@ class MultiCycle:
         x,y,z=cycle.position
         e['position']=e['pallet_position']=(x+dx,y+dy,z)
         e['yaw']=e['pallet_yaw']=yaw
+        e['roll']=e['pitch']=0.
+        if eid=='E1' and self.pickup_case in ENGINE_CASES:
+            ex,ey,ez,rx,ry,rz=ENGINE_CASES[self.pickup_case]
+            e['position']=(x+ex*blend/1000,y+ey*blend/1000,z+ez*blend/1000)
+            e['roll']=rx*blend;e['pitch']=ry*blend;e['yaw']=rz*blend
 
     def set_manual(self, manual):
         # Mode changes are only accepted before playback / after Reset.
@@ -169,21 +174,23 @@ class MultiCycle:
             if kind=='inbound' or t.state in ('TRANSFER','CLOSING','DISPATCH','DONE'):
                 f=t.sample() if kind=='inbound' else t.motion.sample()
                 owner='carrier' if f.owner=='outbound' else f.owner
-                carried=None
+                carried=None;carried_tilt=None
                 if self.level_pickup and kind=='inbound':
                     try:
                         if owner=='gripper' and e['owner']=='pallet':
                             from level_clamp import LevelClamp
                             closed=next(v for v in t.frames if v.owner=='gripper')
-                            self.clamp=LevelClamp(e['position'],e['yaw'],closed)
+                            self.clamp=LevelClamp(e['position'],e['yaw'],closed,e['roll'],e['pitch'])
                             e['clamp_status']='LOCKED';self._event('PIN_CLAMP_LOCKED',eid)
                         if owner=='gripper':
                             carried=self.clamp.sample(f)
+                            carried_tilt=(float(self.clamp.roll),float(self.clamp.pitch))
                         elif owner=='cell' and e['owner']=='gripper':
                             # Validate the closed-jaw handover boundary, before interpolation
                             # into OPEN_JAWS can introduce a small opening on this tick.
                             seated=next(v for v in t.frames if v.owner=='cell')
                             position,yaw,error=self.clamp.seat(seated)
+                            carried_tilt=(float(self.clamp.roll),float(self.clamp.pitch))
                             carried=(position,yaw)
                             self.pickup_checks.append(dict(engine=eid,cell=cell,max_tilt_deg=self.clamp.max_tilt,seat_error_m=error,scope='ideal kinematic pin/clamp; not contact-force validation'))
                             self._event('LEVEL_PICKUP_VERIFIED',eid)
@@ -197,9 +204,11 @@ class MultiCycle:
                 if e['owner']=='pallet' and owner!='pallet' and self.empty_pallet_route:
                     self.empty_routes[eid]=[(2.5,-2.2,.7),(2.5,-3.6,.7),(1.3,-3.6,.7),(-2.5,-3.6,.7),(-4.5,-3.6,.7)]
                 e['owner']=owner
-                e['position']=e['pallet_position'] if owner=='pallet' else tuple(float(v) for v in f.payload)
+                if owner!='pallet':e['position']=tuple(float(v) for v in f.payload)
                 if owner!='pallet':e['yaw']=float(f.yaw)
                 if carried:e['position'],e['yaw']=carried
+                if carried_tilt:e['roll'],e['pitch']=carried_tilt
+                elif owner!='pallet':e['roll']=e['pitch']=0.
                 if owner=='cell':
                     e['cell']=cell;self.cells[cell]=eid
                     if ('STORED',eid) not in self._seen:

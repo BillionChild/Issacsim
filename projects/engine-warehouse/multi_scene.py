@@ -6,10 +6,12 @@ HERE=Path(__file__).resolve().parent
 
 class MultiScene:
     def __init__(self,stage):
-        self.stage=stage;self.robot=StorageScene(stage);self.cache={};self.engines={};self.pallets={};self.carriers={}
+        self.stage=stage;self.robot=StorageScene(stage);self.cache={};self.engines={};self.pallets={};self.carriers={};self.tilts={}
         for path in ('/World/InlineLoad','/World/CarriedEngine','/World/OutboundCarrier'):stage.OverridePrim(path).SetActive(False)
         for name in ('E1','E2','E3'):
             self.engines[name]=self.make('/World/Engines/'+name,FOLDER/'engine_supported_preview.usda',('InlinePallet','Fixture/Columns','Light','PreviewCamera'))
+            engine=UsdGeom.Xformable(stage.GetPrimAtPath('/World/Engines/'+name))
+            self.tilts[name]=(engine.AddRotateYOp(),engine.AddRotateXOp())
             self.pallets[name]=self.make('/World/InlinePallets/'+name,FOLDER/'engine_supported_preview.usda',('Engine','Fixture/Receivers','Light','PreviewCamera'))
         for name in ('C1','C2','C3','C4'):
             self.carriers[name]=self.make('/World/Carriers/'+name,HERE/'assets/outbound_frame_pallet.usda',())
@@ -27,6 +29,7 @@ class MultiScene:
         for sign,op in zip((1,-1),self.robot.jaws):self.set(op,Gf.Vec3d(0,sign*model.robot_frame.opening,0))
         for name,e in model.engines.items():
             xyz,yaw,vis=self.engines[name];self.set(xyz,Gf.Vec3d(*e['position']));self.set(yaw,float(e['yaw']));self.set(vis,'inherited' if e.get('visible',True) else 'invisible')
+            pitch,roll=self.tilts[name];self.set(pitch,float(e['pitch']));self.set(roll,float(e['roll']))
             xyz,yaw,vis=self.pallets[name];self.set(xyz,Gf.Vec3d(*e['pallet_position']));self.set(yaw,float(e['pallet_yaw']));self.set(vis,'inherited' if e['pallet_visible'] else 'invisible')
         for name,c in model.carriers.items():
             xyz,yaw,vis=self.carriers[name];self.set(xyz,Gf.Vec3d(*c['position']))

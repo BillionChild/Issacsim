@@ -1,4 +1,6 @@
-"""Single-pallet U loop. Inspection outcomes are simulated, never inferred.
+"""Single-pallet U loop. Part defect/missing-part outcomes are simulated, never inferred.
+
+FAIL means an assembly quality issue, never an engine seating pose error.
 
 Repair completion only releases the pallet for reinspection; it cannot grant OK.
 No second pallet is spawned, so the shared vision junction has one occupant.

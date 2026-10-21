@@ -117,7 +117,7 @@ class WarehouseExtension(omni.ext.IExt):
             if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
             # Compile current source directly: no same-second .pyc cache surprises.
             self.multi=bool(self.context.get_stage().GetDefaultPrim().GetAttribute('demo:multiEngine').Get())
-            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','pickup_perception','pickup_correction','guided_inbound','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
+            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','pickup_perception','pickup_correction','guided_inbound','engine_guided','engine_depth','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
             for name in modules:
                 file=PROJECT/(name+'.py');module=types.ModuleType(name);module.__file__=str(file)
                 sys.modules[name]=module
@@ -204,7 +204,7 @@ class WarehouseExtension(omni.ext.IExt):
 
     async def observe_first_engine(self):
         runtime=self.runtime
-        self.busy=True;self.info.text='OBSERVE: '+runtime.model.pickup_case+' | wrist RGB; robot held at idle.'
+        self.busy=True;self.info.text='OBSERVE: '+runtime.model.pickup_case+' | wrist vision; robot held at idle.'
         try:
             await runtime.observe_pickup()
             if self.runtime is not runtime:return
@@ -219,7 +219,7 @@ class WarehouseExtension(omni.ext.IExt):
                     with ui.VStack():
                         ui.Label(self.info.text,height=65,word_wrap=True)
                         ui.Image(result['evidence'],width=512,height=512)
-                        ui.Label('Actual warehouse RGB -> learned estimate -> corrected pickup',height=36)
+                        ui.Label('Wrist observation -> pose estimate -> corrected pickup',height=36)
         finally:self.busy=False
 
     def rebuild(self):

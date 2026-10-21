@@ -44,14 +44,20 @@ class MultiRuntime:
         from guided_inbound import build_guided
         generation=self.generation
         try:
-            result=await observe(self.stage,lambda:self.generation==generation,self.model.sensor_occluded)
+            from warehouse_cases import ENGINE_CASES
+            engine_pose=self.model.pickup_case in ENGINE_CASES
+            result=await observe(self.stage,lambda:self.generation==generation,self.model.sensor_occluded,engine_pose)
             if self.generation!=generation:return
             self.model.vision_result=result
             self.model.observations.append(result)
             if not result['accepted']:raise ValueError(result['reason'])
             self.vision_message='ESTIMATE: X %.1f mm, Y %.1f mm, yaw %.2f deg'%tuple(result['pose'])
             self.model._event('VISION_ESTIMATED','E1')
-            self.model.guided_frames=build_guided(result,self.model.motions['inbound','A'])
+            if engine_pose:
+                from engine_guided import build_engine_guided
+                self.vision_message='ENGINE XYZ mm / RPY deg: '+', '.join(f'{v:+.2f}' for v in result['pose6'])
+                self.model.guided_frames=build_engine_guided(result,self.model.motions['inbound','A'])
+            else:self.model.guided_frames=build_guided(result,self.model.motions['inbound','A'])
             self.model.vision_state='ACCEPTED';self.model.phase='E1_CORRECTED_APPROACH'
             self.model._event('VISION_CORRECTION_READY','E1')
         except Exception as exc:
