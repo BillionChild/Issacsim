@@ -2,6 +2,7 @@
 import asyncio,sys,types,subprocess
 from pathlib import Path
 from .dashboard import Dashboard
+from .correction_view import CorrectionView
 import omni.ext
 import omni.ui as ui
 from .ui_help import STYLE, CASE_HELP, tooltip, button
@@ -27,6 +28,7 @@ class WarehouseExtension(omni.ext.IExt):
         self.runtime=None;self.busy=False;self.task=None;self.process=None;self.multi=False
         self.context=omni.usd.get_context();self.timeline=omni.timeline.get_timeline_interface()
         self.dashboard=Dashboard()
+        self.correction=CorrectionView(self.play)
         if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
         from warehouse_cases import CASES
         self.case_names=list(CASES)
@@ -52,6 +54,11 @@ class WarehouseExtension(omni.ext.IExt):
                     button('Monitor',clicked_fn=self.dashboard.show)
                     button('Robot camera',clicked_fn=self.open_robot_camera)
                     button('Overview',clicked_fn=lambda:self.camera('PerspectiveCamera'))
+                with ui.HStack(height=28):
+                    self.explain_pause=ui.CheckBox(width=25)
+                    self.explain_pause.model.set_value(True)
+                    ui.Label('Pause to explain correction')
+                    button('Correction view',clicked_fn=self.correction.show,help_text='Show the captured estimate, commanded grip correction and current recovery step.')
                 self.info=ui.Label('Load demo, choose a case, then Play.',height=64,word_wrap=True)
                 self.recovery_controls=ui.HStack(height=36,visible=False)
                 with self.recovery_controls:
@@ -121,7 +128,7 @@ class WarehouseExtension(omni.ext.IExt):
             if jig and not jig.dirty:jig.Reload()
             # Compile current source directly: no same-second .pyc cache surprises.
             self.multi=bool(self.context.get_stage().GetDefaultPrim().GetAttribute('demo:multiEngine').Get())
-            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','support_contact','pickup_perception','pickup_correction','guided_inbound','engine_guided','engine_depth','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
+            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','support_contact','pickup_perception','pickup_correction','guided_inbound','engine_guided','engine_depth','warehouse_vision','multi_cycle','multi_scene','multi_runtime','correction_story') if self.multi else MODULES
             for name in modules:
                 file=PROJECT/(name+'.py');module=types.ModuleType(name);module.__file__=str(file)
                 sys.modules[name]=module
@@ -182,6 +189,7 @@ class WarehouseExtension(omni.ext.IExt):
         if self.runtime and self.context.get_stage()!=self.runtime.stage:
             self.detach();self.info.text='Stage changed. Load Project to reconnect.'
         self.dashboard.update(self.runtime)
+        self.correction.update(self.runtime if self.multi else None)
         self.recovery_controls.visible=bool(self.runtime and self.multi and self.runtime.model.vision_state=='HOLD')
         if not self.runtime or self.busy:
             self.repair_button.enabled=False;self.outbound_button.enabled=False;return
@@ -216,14 +224,10 @@ class WarehouseExtension(omni.ext.IExt):
             if runtime.model.fault:
                 self.timeline.pause();self.export_metrics()
             result=runtime.model.vision_result
-            if result and result.get('evidence'):
-                if getattr(self,'vision_evidence',None):self.vision_evidence.destroy()
-                self.vision_evidence=ui.Window('Warehouse vision | first engine',width=540,height=620)
-                with self.vision_evidence.frame:
-                    with ui.VStack():
-                        ui.Label(self.info.text,height=65,word_wrap=True)
-                        ui.Image(result['evidence'],width=512,height=512)
-                        ui.Label('Wrist observation -> pose estimate -> corrected pickup',height=36)
+            if result:
+                paused=bool(result.get('accepted') and self.explain_pause.model.get_value_as_bool())
+                if paused:self.timeline.pause()
+                self.correction.present(runtime,paused)
         finally:self.busy=False
 
     def rebuild(self):
@@ -256,7 +260,7 @@ class WarehouseExtension(omni.ext.IExt):
         if self.process and self.process.poll() is None:self.process.terminate()
         self.detach()
         self.dashboard.close()
-        if getattr(self,'vision_evidence',None):self.vision_evidence.destroy()
+        self.correction.close()
         if getattr(self,'robot_view',None):self.robot_view.destroy();self.robot_view=None
         if getattr(self,'pickup_lab',None):self.pickup_lab.close()
         if self.window:self.window.destroy();self.window=None
