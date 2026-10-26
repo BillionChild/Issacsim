@@ -28,4 +28,15 @@ class CameraConfigTests(unittest.TestCase):
         for name in ('CameraBracket','CameraOuterDrop','CameraHousing'):
             self.assertFalse(stage.GetPrimAtPath(TOOL+'/'+name).IsActive())
 
+class RestoreCameraTests(unittest.TestCase):
+    def test_restore_resets_navigated_camera_transform_and_lens(self):
+        from pxr import Gf
+        stage=Usd.Stage.CreateInMemory();UsdGeom.Xform.Define(stage,TOOL);attach(stage)
+        camera=UsdGeom.Camera(stage.GetPrimAtPath(CAMERA));expected=camera.GetLocalTransformation()
+        camera.MakeMatrixXform().Set(Gf.Matrix4d().SetTranslate(Gf.Vec3d(3,2,1)))
+        camera.GetFocalLengthAttr().Set(30.)
+        attach(stage,restore=True)
+        self.assertEqual(camera.GetLocalTransformation(),expected)
+        self.assertEqual(camera.GetFocalLengthAttr().Get(),12.)
+
 if __name__=='__main__':unittest.main()

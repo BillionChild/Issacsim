@@ -4,7 +4,7 @@ from pxr import UsdGeom,Gf
 TOOL='/World/Robot/Base/J1/J2/J3/J4/J5/J6/EngineJig'
 CAMERA=TOOL+'/WristCamera'
 
-def attach(stage):
+def attach(stage,restore=False):
     if not stage.GetPrimAtPath(TOOL):raise RuntimeError('FANUC tool is missing')
     # Suppress mounts in older referenced/saved scenes as well as new scenes.
     # Keep the Camera prim and its calibrated transform/lens unchanged.
@@ -14,7 +14,7 @@ def attach(stage):
     existing=stage.GetPrimAtPath(CAMERA)
     # Saving a scene while the runtime owns the camera can leave only an
     # untyped override in the asset. Existence alone does not mean a camera.
-    if existing and existing.IsA(UsdGeom.Camera) and UsdGeom.Xformable(existing).GetOrderedXformOps():return CAMERA
+    if not restore and existing and existing.IsA(UsdGeom.Camera) and UsdGeom.Xformable(existing).GetOrderedXformOps():return CAMERA
     # Tool-local optical axis covers the pallet at hover and during approach.
     eye=Gf.Vec3d(.43,.75,-.3);target=Gf.Vec3d(.43,0,-1.05)
     cam=UsdGeom.Camera.Define(stage,CAMERA)

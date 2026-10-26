@@ -45,6 +45,10 @@ class MultiRuntime:
         generation=self.generation
         try:
             from warehouse_cases import ENGINE_CASES
+            # Viewport navigation can alter the sensor camera. Restore its known
+            # local pose/lens before capture; the world-calibration guard still applies.
+            from wrist_camera import attach
+            with Usd.EditContext(self.stage,self.layer):attach(self.stage,restore=True)
             engine_pose=self.model.pickup_case in ENGINE_CASES
             result=await observe(self.stage,lambda:self.generation==generation,self.model.sensor_occluded,engine_pose)
             if self.generation!=generation:return

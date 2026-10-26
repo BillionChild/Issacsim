@@ -83,3 +83,17 @@ Actual sensor/controller integration: `test_warehouse_cases_editor.py`.
   outputs/warehouse-case-validation.json and outputs/engine-depth/calibration-check.json.
 - These results establish the tested kinematic/sensor scenarios, not contact-force
   validation or exhaustive coverage of the correction envelope.
+
+Camera recovery (2026-10-26): each pickup observation restores the wrist camera's
+configured local transform and lens before rendering. Viewport navigation must
+not become a new sensor calibration. The world-transform guard remains active.
+If a run is already on HOLD, use Clear camera mask + retry after reloading code.
+Regression: 5 offline tests and actual engine_roll / engine_combined runs with
+intentionally altered camera transform/lens passed (logs/camera-restore-editor.log).
+
+Known visual limitation: the ideal clamp does not check engine-to-pad surface
+contact. A local vertical-ray sample over the current pad footprints found no
+engine surface above one footprint; the other had a minimum sampled gap around
+4.5 mm. These are geometry diagnostics, not contact-force results. Engine pose
+and final seating tests alone do not establish a credible support contact.
+Pad contact geometry revision is pending user approval.
