@@ -115,9 +115,13 @@ class WarehouseExtension(omni.ext.IExt):
         self.timeline.stop();self.detach()
         try:
             if str(PROJECT) not in sys.path:sys.path.insert(0,str(PROJECT))
+            # Refresh the authored jig without closing Kit or discarding unsaved asset edits.
+            from pxr import Sdf
+            jig=Sdf.Layer.Find(str(PROJECT/'assets/engine_jig.usda'))
+            if jig and not jig.dirty:jig.Reload()
             # Compile current source directly: no same-second .pyc cache surprises.
             self.multi=bool(self.context.get_stage().GetDefaultPrim().GetAttribute('demo:multiEngine').Get())
-            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','pickup_perception','pickup_correction','guided_inbound','engine_guided','engine_depth','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
+            modules=MODULES+('warehouse_cases','build_multi_motion','level_clamp','support_contact','pickup_perception','pickup_correction','guided_inbound','engine_guided','engine_depth','warehouse_vision','multi_cycle','multi_scene','multi_runtime') if self.multi else MODULES
             for name in modules:
                 file=PROJECT/(name+'.py');module=types.ModuleType(name);module.__file__=str(file)
                 sys.modules[name]=module

@@ -180,6 +180,11 @@ class MultiCycle:
                         if owner=='gripper' and e['owner']=='pallet':
                             from level_clamp import LevelClamp
                             closed=next(v for v in t.frames if v.owner=='gripper')
+                            from support_contact import validate_alignment,np,Rotation
+                            from fanuc_kinematics import fk
+                            tool_position,tool_rotation=fk(closed.q,(0,0,0))
+                            rotation=Rotation.from_euler('xyz',[e['roll'],e['pitch'],e['yaw']],degrees=True).as_matrix()
+                            validate_alignment(np.asarray(e['position']),rotation,tool_position,tool_rotation)
                             self.clamp=LevelClamp(e['position'],e['yaw'],closed,e['roll'],e['pitch'])
                             e['clamp_status']='LOCKED';self._event('PIN_CLAMP_LOCKED',eid)
                         if owner=='gripper':

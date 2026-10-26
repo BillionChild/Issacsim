@@ -52,3 +52,7 @@ r=UsdGeom.Xform.Define(v,'/World/Cradle');r.GetPrim().GetReferences().AddReferen
 light=UsdLux.DomeLight.Define(v,'/World/Light');light.CreateIntensityAttr(1000)
 cam=UsdGeom.Camera.Define(v,'/World/PreviewCamera');cam.CreateFocalLengthAttr(40);cam.CreateClippingRangeAttr(Gf.Vec2f(.01,100));cam.AddTransformOp().Set(Gf.Matrix4d().SetLookAt(Gf.Vec3d(2.4,-2.8,2.),Gf.Vec3d(0,0,.35),Gf.Vec3d(0,0,1)).GetInverse());v.GetRootLayer().Save()
 print('Built engine_jig.usda, engine_cell_cradle.usda, detail preview')
+
+# Reapply the approved mesh-fitted shoes after rebuilding the base jig.
+import runpy
+runpy.run_path(str(HERE/'build_support_shoes.py'),run_name='__main__')

@@ -91,9 +91,35 @@ If a run is already on HOLD, use Clear camera mask + retry after reloading code.
 Regression: 5 offline tests and actual engine_roll / engine_combined runs with
 intentionally altered camera transform/lens passed (logs/camera-restore-editor.log).
 
-Known visual limitation: the ideal clamp does not check engine-to-pad surface
-contact. A local vertical-ray sample over the current pad footprints found no
-engine surface above one footprint; the other had a minimum sampled gap around
-4.5 mm. These are geometry diagnostics, not contact-force results. Engine pose
-and final seating tests alone do not establish a credible support contact.
-Pad contact geometry revision is pending user approval.
+Support shoes (2026-10-26): approved replacement of the old flat pads with
+small engine-matched contact shoes. Main jaw frame and lower fingers are retained.
+The engine-local contact centers are (160,130) and (110,-160) mm; each contact
+footprint is 16 x 10 mm, with an 8 mm rubber layer on a shaped metal riser.
+The top grids are sampled from the engine underside, not the global bounding box.
+The right bridge is elevated to clear the unchanged rack rubber pad.
+
+Before inbound attachment, the actual engine/tool relative transform must align
+within 3 mm at both support regions. A mismatch puts the run on HOLD; the check
+does not snap the engine into place. This is a geometric registration tolerance,
+not a force sensor or a simulation of rubber compression. Small residual gaps or
+penetrations within that tolerance may remain. Support locations follow this
+visual engine asset and are not certified production load-bearing surfaces.
+Rebuild with build_support_shoes.py; the base jig builder also reapplies them.
+Changing visible geometry requires fresh RGB training captures; do not reuse
+captures from the old flat-pad jig.
+
+Support-shoe validation evidence:
+- 17 focused offline tests passed (support geometry/alignment, engine pose,
+  multi-cycle and runtime).
+- Nominal upper-cell inbound/outbound geometry: 265 / 323 samples at 0.2 s,
+  zero reported robot/environment or payload hits after raising the right bridge.
+- Multi-engine conveyors/carriers: 2188 samples at 0.2 s, zero reported hits.
+- Fresh RGB training: 343 poses; 32 held-out poses all accepted. Maximum
+  X/Y/yaw errors: 1.362 mm / 1.115 mm / 0.187 deg. Masked observation rejected.
+- Final shoe views: outputs/support-shoes-underside.png and
+  outputs/support-shoes-opposite.png. These show nominal contact geometry.
+- Sampling does not establish continuous collision freedom or physical strength.
+- Final sensor/controller regression after retraining: all 17 cases completed,
+  including engine-only pose faults, pallet faults and occlusion recovery
+  (logs/support-shoes-editor-final.log).
+- Original frame/pin/finger attributes preserved across 22 non-pad prims.
